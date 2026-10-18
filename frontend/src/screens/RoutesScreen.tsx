@@ -63,14 +63,15 @@ export function RoutesScreen({
   destination,
   origin,
   onBack,
+  onStart,
 }: {
   routes: RouteResponse;
   destination: PlaceHit;
   origin: { latitude: number; longitude: number };
   onBack: () => void;
+  onStart: (choice: Choice) => void;
 }) {
   const [selected, setSelected] = useState<Choice>("safety_focused");
-  const [started, setStarted] = useState(false);
   const mapRef = useRef<MapView>(null);
 
   const fastest = toLatLngs(routes.fastest.geometry);
@@ -142,13 +143,8 @@ export function RoutesScreen({
         </View>
       </View>
 
-      {started && (
-        <View style={styles.banner}>
-          <Text style={styles.bannerText}>Navigation preview started</Text>
-        </View>
-      )}
       <View style={styles.primary}>
-        <PrimaryButton label="Start Navigation" onPress={() => setStarted(true)} />
+        <PrimaryButton label="Start Navigation" onPress={() => onStart(selected)} />
       </View>
     </ScrollView>
   );
@@ -174,7 +170,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 13,
     paddingVertical: 14,
   },
-  routeCardSelected: { backgroundColor: "#f5fbfa", borderColor: colors.teal },
+  routeCardSelected: { backgroundColor: colors.tealSoft, borderColor: colors.teal },
   routeIcon: { alignItems: "center", borderRadius: 11, height: 39, justifyContent: "center", width: 39 },
   iconBlue: { backgroundColor: colors.blueSoft },
   iconTeal: { backgroundColor: colors.tealSoft },
@@ -208,13 +204,5 @@ const styles = StyleSheet.create({
     height: 174,
     overflow: "hidden",
   },
-  banner: {
-    backgroundColor: colors.blueSoft,
-    borderRadius: 11,
-    marginTop: 12,
-    paddingHorizontal: 11,
-    paddingVertical: 9,
-  },
-  bannerText: { color: colors.blue, fontSize: 11, fontWeight: "600" },
   primary: { marginTop: 16 },
 });

@@ -30,6 +30,9 @@ from app.config import (  # noqa: E402
     MANIFEST_PATH,
     PLACE_BUFFER_M,
     POIS_PATH,
+    NAMED_BUILDINGS,
+    NAMED_LEISURE,
+    NAMED_RAIL,
     PUBLIC_PLACE_AMENITIES,
     PUBLIC_TOURISM,
     SIDEWALK_BUFFER_M,
@@ -75,6 +78,8 @@ def _gdf_from_fc(collection: dict) -> gpd.GeoDataFrame:
 
 def fetch_walk_graph() -> tuple[object, dict]:
     west, south, east, north = BBOX
+    ox.settings.http_user_agent = "PathWise/1.0 (UW walking routes; student project)"
+    ox.settings.requests_timeout = 180
     print(f"Downloading OSM walk network bbox={BBOX} …")
     graph = ox.graph_from_bbox((west, south, east, north), network_type="walk", simplify=True)
     graph = ox.distance.add_edge_lengths(graph)
@@ -96,35 +101,69 @@ def fetch_walk_graph() -> tuple[object, dict]:
     return graph, meta
 
 
+def _public_place(row: object) -> tuple[bool, str, str]:
+    amenity = _text(row.get("amenity"))
+    shop = _text(row.get("shop"))
+    tourism = _text(row.get("tourism"))
+    building = _text(row.get("building"))
+    leisure = _text(row.get("leisure"))
+    railway = _text(row.get("railway"))
+    office = _text(row.get("office"))
+    name = _text(row.get("name"))
+    if amenity in PUBLIC_PLACE_AMENITIES or bool(shop) or tourism in PUBLIC_TOURISM:
+        category = amenity or shop or tourism or "place"
+        return True, name or shop or amenity or tourism or "Place", category
+    if name and building in NAMED_BUILDINGS:
+        return True, name, building
+    if name and leisure in NAMED_LEISURE:
+        return True, name, leisure
+    if name and railway in NAMED_RAIL:
+        return True, name, railway
+    if name and office:
+        return True, name, office
+    return False, "", ""
+
+
 def fetch_places() -> tuple[gpd.GeoDataFrame, dict]:
     west, south, east, north = BBOX
-    tags = {"amenity": True, "shop": True, "tourism": True}
-    print("Downloading OSM amenities / shops / tourism …")
+    tags = {
+        "amenity": True,
+        "shop": True,
+        "tourism": True,
+        "building": sorted(NAMED_BUILDINGS),
+        "leisure": sorted(NAMED_LEISURE),
+        "railway": sorted(NAMED_RAIL),
+        "office": True,
+    }
+    print("Downloading OSM places, shops, and named buildings …")
     try:
+        ox.settings.http_user_agent = "PathWise/1.0 (UW walking routes; student project)"
+        ox.settings.requests_timeout = 180
         gdf = ox.features_from_bbox((west, south, east, north), tags)
         gdf = gdf.reset_index()
         rows = []
+        seen: set[str] = set()
         for _, row in gdf.iterrows():
             geom = row.geometry
             if geom is None or geom.is_empty:
                 continue
-            amenity = _text(row.get("amenity"))
-            shop = _text(row.get("shop"))
-            tourism = _text(row.get("tourism"))
-            public = amenity in PUBLIC_PLACE_AMENITIES or bool(shop) or tourism in PUBLIC_TOURISM
-            if not public:
+            keep, name, category = _public_place(row)
+            if not keep:
                 continue
-            name = _text(row.get("name")) or shop or amenity or tourism or "Place"
             point = geom if geom.geom_type == "Point" else geom.representative_point()
             osm_type = _text(row.get("element_type")) or "node"
             osm_id = _text(row.get("osmid")) or _text(row.get("id"))
+            place_id = f"{osm_type}:{osm_id}"
+            if place_id in seen:
+                continue
+            seen.add(place_id)
             hours = row.get("opening_hours")
             hours_s = hours if isinstance(hours, str) else None
             rows.append(
                 {
                     "name": name.strip(),
-                    "category": amenity or shop or tourism or "place",
-                    "osm_id": f"{osm_type}:{osm_id}",
+                    "category": category,
+                    "osm_id": place_id,
                     "opening_hours": hours_s,
                     "hours_available": bool(hours_s),
                     "geometry": Point(point.x, point.y),
@@ -134,7 +173,7 @@ def fetch_places() -> tuple[gpd.GeoDataFrame, dict]:
         meta = {
             "ok": True,
             "fetched_at": _now(),
-            "source": "OpenStreetMap amenities/shops/tourism via OSMnx",
+            "source": "OpenStreetMap places, shops, and named buildings via OSMnx",
             "feature_count": int(len(pois)),
             "with_opening_hours": int(pois["hours_available"].sum()) if len(pois) else 0,
             "error": None,
@@ -145,7 +184,7 @@ def fetch_places() -> tuple[gpd.GeoDataFrame, dict]:
         meta = {
             "ok": False,
             "fetched_at": _now(),
-            "source": "OpenStreetMap amenities/shops/tourism via OSMnx",
+            "source": "OpenStreetMap places, shops, and named buildings via OSMnx",
             "feature_count": 0,
             "with_opening_hours": 0,
             "error": f"{type(exc).__name__}: {exc}",

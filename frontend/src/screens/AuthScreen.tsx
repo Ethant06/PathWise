@@ -1,4 +1,6 @@
-import { useState } from "react";
+import * as Google from "expo-auth-session/providers/google";
+import * as WebBrowser from "expo-web-browser";
+import { useEffect, useRef, useState } from "react";
 import {
   KeyboardAvoidingView,
   Platform,
@@ -20,8 +22,17 @@ import type { TokenResponse } from "../types";
 
 type Mode = "login" | "signup";
 
-/** Placeholder until Google sign-in is connected (see README). */
-const MOCK_GOOGLE_ID_TOKEN = "mock-google-token";
+WebBrowser.maybeCompleteAuthSession();
+
+/** Google's iOS redirect. In Expo Go the client bundle ID is host.exp.Exponent. */
+function googleRedirectUri(clientId: string): string {
+  const prefix = clientId.replace(".apps.googleusercontent.com", "");
+  return `com.googleusercontent.apps.${prefix}:/oauthredirect`;
+}
+
+const googleIosClientId = process.env.EXPO_PUBLIC_GOOGLE_IOS_CLIENT_ID;
+const googleAndroidClientId = process.env.EXPO_PUBLIC_GOOGLE_ANDROID_CLIENT_ID;
+const googleWebClientId = process.env.EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID;
 
 function Field({ label, ...input }: { label: string } & TextInputProps) {
   return (
@@ -47,8 +58,27 @@ export function AuthScreen({
   const [password, setPassword] = useState("");
   const [pending, setPending] = useState<"form" | "google" | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const handledGoogleToken = useRef<string | null>(null);
+
+  const [request, response, promptAsync] = Google.useAuthRequest({
+    iosClientId: googleIosClientId || "missing.apps.googleusercontent.com",
+    androidClientId: googleAndroidClientId,
+    webClientId: googleWebClientId,
+    redirectUri: Platform.OS === "ios" && googleIosClientId ? googleRedirectUri(googleIosClientId) : undefined,
+    // Always show the account picker and Google's permission screen.
+    extraParams: { prompt: "select_account consent" },
+    scopes: ["openid", "profile", "email"],
+  });
 
   const isSignup = mode === "signup";
+
+  useEffect(() => {
+    if (response?.type !== "success") return;
+    const idToken = response.authentication?.idToken || response.params.id_token;
+    if (!idToken || handledGoogleToken.current === idToken) return;
+    handledGoogleToken.current = idToken;
+    run("google", () => loginWithGoogle({ id_token: idToken }));
+  }, [response]);
 
   function switchMode() {
     setMode(isSignup ? "login" : "signup");
@@ -63,6 +93,28 @@ export function AuthScreen({
     } catch (e) {
       setError(e instanceof Error ? e.message : "Something went wrong. Try again.");
       setPending(null);
+    }
+  }
+
+  async function startGoogle() {
+    if (!googleIosClientId && Platform.OS === "ios") {
+      setError("Google sign-in needs the iOS client ID for Expo Go.");
+      return;
+    }
+    if (!googleAndroidClientId && Platform.OS === "android") {
+      setError("Google sign-in needs the Android client ID for com.pathwise.app.");
+      return;
+    }
+    setError(null);
+    setPending("google");
+    const result = await promptAsync({ preferEphemeralSession: true });
+    if (result.type === "cancel" || result.type === "dismiss" || result.type === "error") {
+      setPending(null);
+      setError(
+        result.type === "error"
+          ? "Google did not grant access. Sign-in was not completed."
+          : "Google sign-in was canceled.",
+      );
     }
   }
 
@@ -158,16 +210,16 @@ export function AuthScreen({
 
         <Pressable
           accessibilityRole="button"
-          disabled={pending !== null}
-          onPress={() => run("google", () => loginWithGoogle({ id_token: MOCK_GOOGLE_ID_TOKEN }))}
+          disabled={pending !== null || !request}
+          onPress={startGoogle}
           style={({ pressed }) => [
             styles.secondaryButton,
             pressed && styles.secondaryPressed,
-            pending !== null && styles.inactive,
+            (pending !== null || !request) && styles.inactive,
           ]}
         >
           <Text style={styles.secondaryLabel}>
-            {pending === "google" ? "Connecting…" : "Continue with Google"}
+            {pending === "google" ? "Waiting for Google…" : "Sign in with Google"}
           </Text>
         </Pressable>
 

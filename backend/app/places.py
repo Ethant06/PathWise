@@ -4,27 +4,43 @@ from __future__ import annotations
 
 import json
 
-from app.config import POIS_PATH
+from app.config import POIS_PATH, UW_CENTER_LAT, UW_CENTER_LNG
 from app.schemas.places import PlaceHit
 
 _MISSING = {"nan", "none", "<na>", "nat", ":"}
+_SKIP_WORDS = {"the", "at", "of", "and", "a", "an", "in", "on"}
 
 
-def search_places(query: str, limit: int = 8) -> list[PlaceHit]:
+def search_places(query: str, limit: int = 20) -> list[PlaceHit]:
     q = query.strip().lower()
-    scored: list[tuple[int, str, PlaceHit]] = []
+    scored: list[tuple[int, float, str, PlaceHit]] = []
     for place in _load_places():
-        name = place.name.lower()
-        category = place.category.lower()
-        if q in name:
-            score = 0 if name.startswith(q) else 1
-        elif category and q in category:
-            score = 2
-        else:
+        rank = _rank(q, place)
+        if rank is None:
             continue
-        scored.append((score, place.name, place))
-    scored.sort(key=lambda item: (item[0], item[1]))
-    return [item[2] for item in scored[:limit]]
+        scored.append((rank, _campus_distance(place), place.name, place))
+    scored.sort(key=lambda item: (item[0], item[1], item[2]))
+    return [item[3] for item in scored[:limit]]
+
+
+def _rank(query: str, place: PlaceHit) -> int | None:
+    name = place.name.lower()
+    category = place.category.lower()
+    if query in name:
+        return 0 if name.startswith(query) else 1
+    words = [word for word in query.split() if len(word) >= 3 and word not in _SKIP_WORDS]
+    if words and all(word in name for word in words):
+        return 2
+    if category and query in category:
+        return 3
+    return None
+
+
+def _campus_distance(place: PlaceHit) -> float:
+    """Squared distance from campus, with longitude scaled to roughly match latitude."""
+    dlat = place.lat - UW_CENTER_LAT
+    dlng = (place.lng - UW_CENTER_LNG) * 0.67
+    return dlat * dlat + dlng * dlng
 
 
 def places_cache_error() -> str | None:

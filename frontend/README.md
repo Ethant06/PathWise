@@ -12,8 +12,10 @@ Node is recorded in the repo root `.nvmrc` (`v24.11.0`).
 cd frontend
 npm install
 Copy-Item .env.example .env
-npx expo start
+npm start
 ```
+
+`npm start` runs the Expo 57 CLI installed by `npm install`. This project is pinned to Expo SDK 57 in `package.json` and `package-lock.json`. `npx expo start`, before that install, downloads the newest Expo from the internet, which is SDK 58, and then the app fails.
 
 `.env` is personal and is not in Git. Restart Expo after changing it.
 
@@ -23,7 +25,7 @@ npx expo start
 | iOS Simulator on a Mac | `http://localhost:8000` |
 | A real phone | `http://<laptop IPv4>:8000` |
 
-On Windows, `ipconfig` shows the IPv4 address. The phone and laptop need a shared network. Campus Wi-Fi often blocks that, so use the phone hotspot if requests fail. `npx expo start --tunnel` only delivers the app bundle. It does not publish the API.
+On Windows, `ipconfig` shows the IPv4 address. The phone and laptop need a shared network. Campus Wi-Fi often blocks that, so use the phone hotspot if requests fail. `npm start -- --tunnel` only delivers the app bundle. It does not publish the API. Expo Go on the phone must be the SDK 57 app.
 
 Install Expo Go, then scan the QR code. The map will not render in the browser.
 
