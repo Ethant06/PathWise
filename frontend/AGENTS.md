@@ -23,11 +23,13 @@ npx expo install --fix      # fix incompatible package versions
 
 Run lint and typecheck before declaring any task done.
 
-## Navigation & Routing
+## Navigation and API
 
-- Use **Expo Router** for all navigation. Routes live in `src/app/` — every file there is a screen, `_layout.tsx` files define navigators. Keep non-route code (components, hooks, utils) outside `src/app/`.
-- Import `Link`, `router`, and `useLocalSearchParams` from `expo-router`.
-- Docs: https://docs.expo.dev/router/introduction.md
+This starter is a blank `App.tsx`. Do not add a finished map, login form, or sample screens unless asked. The team is building those screens.
+
+- Call the backend only through `src/api.ts`.
+- Use the types in `src/types.ts`. They match `mock-api/app/schemas`.
+- `react-native-maps` and `expo-location` are already dependencies. No screen uses them yet.
 
 ## Building with EAS
 

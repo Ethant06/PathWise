@@ -1,31 +1,33 @@
 # PathWise frontend
 
-Blank Expo app (TypeScript). The map screen calls `POST /api/routes` and draws the safety-focused walk.
+Blank Expo app. The screen in `App.tsx` is only a title. Sign-in, the home map, and the places directory are not built yet.
 
-The map runs in Expo Go on a phone or in the Android emulator. It does not render in the browser.
+`react-native-maps` and `expo-location` are already installed. No screen uses them.
 
-## Setup
+## Run
 
-Use Node 22.13+, 24.3+, or 26+. This repo's `.nvmrc` is the version used to create the app.
+Node is recorded in the repo root `.nvmrc` (`v24.11.0`).
 
 ```powershell
 cd frontend
 npm install
 Copy-Item .env.example .env
-npx expo start --tunnel
+npx expo start
 ```
 
-Edit `.env` before you start Expo. `EXPO_PUBLIC_API_URL` is the only setting. `.env` stays off Git. `.env.example` is the shared template.
+`.env` is personal and is not in Git. Restart Expo after changing it.
 
-| Where the app runs | URL |
+| Where the app runs | `EXPO_PUBLIC_API_URL` |
 | --- | --- |
 | Android emulator | `http://10.0.2.2:8000` |
 | iOS Simulator on a Mac | `http://localhost:8000` |
-| iPhone or a real Android phone | `http://<laptop IPv4>:8000` |
+| A real phone | `http://<laptop IPv4>:8000` |
 
-On Windows, find the IPv4 address with `ipconfig`. The phone and laptop must be on the same network. Campus Wi-Fi often blocks that, so use the phone's hotspot for the laptop if the request fails. `--tunnel` only delivers the JavaScript bundle. It does not publish the API.
+On Windows, `ipconfig` shows the IPv4 address. The phone and laptop need a shared network. Campus Wi-Fi often blocks that, so use the phone hotspot if requests fail. `npx expo start --tunnel` only delivers the app bundle. It does not publish the API.
 
-Start the mock API so the phone can reach it:
+Install Expo Go, then scan the QR code. The map will not render in the browser.
+
+Start the mock API in another terminal so the phone can reach it:
 
 ```powershell
 cd mock-api
@@ -33,12 +35,18 @@ cd mock-api
 uvicorn app.main:app --reload --host 0.0.0.0 --port 8000
 ```
 
-`--host 0.0.0.0` is what lets another device connect. On an iPhone, install Expo Go, run `npx expo start --tunnel`, and scan the QR code with the Camera app.
+## What to build
 
-## Code map
+Use `src/api.ts` for every request. The response shapes are `src/types.ts`, copied from `mock-api/app/schemas`. If a field is missing, ask before adding one.
 
-- `App.tsx` draws a dark UW map from Suzzallo Library to The Ave and a **Find safest route** button.
-- `src/api.ts` is the only file that calls the backend. It sends the ngrok warning header so a later ngrok URL still works.
-- `src/types.ts` matches `POST /api/routes` in `backend/app/schemas/routes.py` and `mock-api/app/schemas/routes.py`.
+| Screen | Calls |
+| --- | --- |
+| Sign up | `register` |
+| Log in | `login`, `loginWithGoogle` (`id_token` is `mock-google-token` until Google is connected) |
+| Account | `currentUser` with the saved `access_token` |
+| Home map | `dataStatus`, `findRoutes` |
+| Places directory | `searchPlaces` |
 
-Leave those response fields aligned with the backend. If a field changes, update `src/types.ts` in the same change.
+Place search and routing do not send the token. Save `access_token` on the device after register, login, or Google.
+
+`findRoutes` returns `fastest` and `safety_focused`. Each `geometry.coordinates` list is `[longitude, latitude]`. There is no safety score from 0 to 100.

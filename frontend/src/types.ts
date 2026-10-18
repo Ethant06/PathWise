@@ -1,4 +1,62 @@
-/** Matches backend `app/schemas/routes.py` for POST /api/routes. */
+/** Field names match mock-api/app/schemas. Do not add fields the API does not return. */
+
+export type UserPublic = {
+  id: number;
+  name: string;
+  email: string;
+  auth_provider: "password" | "google";
+};
+
+export type TokenResponse = {
+  access_token: string;
+  token_type: "bearer";
+  user: UserPublic;
+};
+
+export type RegisterRequest = {
+  name: string;
+  email: string;
+  password: string;
+};
+
+export type LoginRequest = {
+  email: string;
+  password: string;
+};
+
+export type GoogleLoginRequest = {
+  id_token: string;
+};
+
+export type HealthResponse = {
+  ok: boolean;
+  ready: boolean;
+  mock: boolean;
+};
+
+export type MapCenter = {
+  lat: number;
+  lng: number;
+};
+
+export type DataStatusResponse = {
+  ready: boolean;
+  message: string;
+  center: MapCenter;
+  /** [west, south, east, north] */
+  bbox: number[];
+  layers: Record<string, unknown>;
+  mock: boolean;
+};
+
+export type PlaceHit = {
+  name: string;
+  lat: number;
+  lng: number;
+  category: string;
+  osm_id: string;
+  opening_hours: string | null;
+};
 
 export type RouteRequest = {
   origin_lat: number;
