@@ -4,15 +4,10 @@ from __future__ import annotations
 
 import json
 
-import httpx
-
-from app.config import settings
+from app.openai_agent import configured_api_key, openai_chat
 from app.places import search_places
 from app.schemas.places import PlaceHit
 from app.veyzl import record_walk_buddy
-
-_OPENAI = "https://api.openai.com/v1/chat/completions"
-_MODEL = "gpt-4o-mini"
 _SYSTEM = (
     "You help people walk around the University of Washington. "
     "They are already at the coordinates in the user message. Never ask where they are starting. "
@@ -25,36 +20,10 @@ _SYSTEM = (
 
 def suggest_walk(question: str, lat: float, lng: float) -> tuple[str | None, list[PlaceHit], str | None]:
     """Return (answer, matching places, error). Exact coordinates go to the model."""
-    if not settings.openai_api_key:
-        return None, [], "Walk Buddy needs an OpenAI API key on the server."
     prompt = _user_prompt(question, lat, lng)
-    try:
-        response = httpx.post(
-            _OPENAI,
-            headers={
-                "Authorization": f"Bearer {settings.openai_api_key}",
-                "Content-Type": "application/json",
-            },
-            json={
-                "model": _MODEL,
-                "response_format": {"type": "json_object"},
-                "messages": [
-                    {"role": "system", "content": _SYSTEM},
-                    {"role": "user", "content": prompt},
-                ],
-            },
-            timeout=30,
-        )
-    except httpx.HTTPError:
-        return None, [], "The model could not be reached."
-    if response.status_code != 200:
-        return None, [], "The model did not answer."
-    try:
-        content = response.json()["choices"][0]["message"]["content"]
-    except (KeyError, IndexError, TypeError, ValueError):
-        return None, [], "The model did not answer."
-    if not isinstance(content, str) or not content.strip():
-        return None, [], "The model did not answer."
+    content, error = openai_chat(configured_api_key(), _SYSTEM, prompt)
+    if error is not None or content is None:
+        return None, [], error or "The model did not answer."
     answer, places = _read_reply(content)
     record_walk_buddy(prompt, answer)
     return answer, places, None

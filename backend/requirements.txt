@@ -33,6 +33,7 @@ charset_normalizer==3.5.2
 geopandas==1.2.0
 httpcore==1.0.9
 httpx==0.28.1
+openai==1.109.1
 osmnx==2.1.1
 packaging==26.3
 pandas==3.0.6
