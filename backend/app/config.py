@@ -11,6 +11,7 @@ BACKEND_DIR = Path(__file__).resolve().parent.parent
 CACHE_DIR = BACKEND_DIR / "data" / "cache"
 MANIFEST_PATH = CACHE_DIR / "manifest.json"
 GRAPH_PATH = CACHE_DIR / "walk_graph.pkl"
+POIS_PATH = CACHE_DIR / "pois.geojson"
 
 
 class Settings(BaseSettings):
