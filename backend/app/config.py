@@ -18,6 +18,59 @@ UW_CENTER_LAT = 47.6553
 UW_CENTER_LNG = -122.3035
 BBOX = (-122.332, 47.645, -122.280, 47.672)
 
+LIGHT_BUFFER_M = 28.0
+SIDEWALK_BUFFER_M = 18.0
+CROSSWALK_BUFFER_M = 22.0
+PLACE_BUFFER_M = 80.0
+
+ARCGIS_STREETLIGHTS = (
+    "https://services.arcgis.com/ZOyb2t4B0UYuYNYH/arcgis/rest/services/"
+    "Seattle_City_Light_Poles/FeatureServer/0"
+)
+ARCGIS_SIDEWALKS = (
+    "https://services.arcgis.com/ZOyb2t4B0UYuYNYH/ArcGIS/rest/services/"
+    "Sidewalks_CDL/FeatureServer/0"
+)
+ARCGIS_CROSSWALKS = (
+    "https://services.arcgis.com/ZOyb2t4B0UYuYNYH/arcgis/rest/services/"
+    "Marked_Crosswalks_CDL/FeatureServer/0"
+)
+
+PUBLIC_PLACE_AMENITIES = {
+    "cafe",
+    "restaurant",
+    "fast_food",
+    "library",
+    "university",
+    "college",
+    "pharmacy",
+    "hospital",
+    "clinic",
+    "doctors",
+    "dentist",
+    "bank",
+    "atm",
+    "theatre",
+    "cinema",
+    "community_centre",
+    "arts_centre",
+    "marketplace",
+    "police",
+    "fire_station",
+    "post_office",
+    "fuel",
+    "bar",
+    "pub",
+    "ice_cream",
+    "convenience",
+    "supermarket",
+    "bookstore",
+    "bicycle_rental",
+    "toilets",
+    "fountain",
+}
+PUBLIC_TOURISM = {"museum", "hotel", "attraction", "gallery", "hostel"}
+
 BACKEND_DIR = Path(__file__).resolve().parent.parent
 CACHE_DIR = BACKEND_DIR / "data" / "cache"
 MANIFEST_PATH = CACHE_DIR / "manifest.json"
