@@ -134,6 +134,14 @@ export function startWatch(body: {
   return request("/api/watch", { method: "POST", body: JSON.stringify(body) });
 }
 
+export type WalkBuddy = {
+  answer: string;
+};
+
+export function askWalkBuddy(body: { question: string; lat: number; lng: number }): Promise<WalkBuddy> {
+  return request("/api/walk-buddy", { method: "POST", body: JSON.stringify(body) });
+}
+
 export function updateWatch(
   id: string,
   body: {

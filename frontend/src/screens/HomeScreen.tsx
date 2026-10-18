@@ -89,6 +89,7 @@ export function HomeScreen({
   onRetryLocation,
   onPickDestination,
   onFind,
+  onAskBuddy,
 }: {
   status: DataStatusResponse | null;
   statusError: string | null;
@@ -99,6 +100,7 @@ export function HomeScreen({
   onRetryLocation: () => void;
   onPickDestination: () => void;
   onFind: () => void;
+  onAskBuddy: () => void;
 }) {
   const theme = useTheme();
   const mapRef = useRef<MapView>(null);
@@ -204,6 +206,7 @@ export function HomeScreen({
           loading={finding}
           onPress={onFind}
         />
+        <Button disabled={origin.status !== "ready"} label="Ask Walk Buddy" onPress={onAskBuddy} variant="text" />
       </View>
     </Screen>
   );

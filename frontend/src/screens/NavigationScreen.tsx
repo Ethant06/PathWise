@@ -43,7 +43,6 @@ export function NavigationScreen({
   const [watcherName, setWatcherName] = useState("");
   const [open, setOpen] = useState(false);
   const [watchers, setWatchers] = useState<Watcher[] | null>(null);
-  const [line, setLine] = useState("");
   const [watchId, setWatchId] = useState<string | null>(null);
   const [watchError, setWatchError] = useState<string | null>(null);
   const watchIdRef = useRef<string | null>(null);
@@ -71,7 +70,6 @@ export function NavigationScreen({
     listWatchers()
       .then((result) => {
         if (cancelled) return;
-        setLine(result.line);
         setWatchers(result.watchers);
       })
       .catch(() => {
@@ -240,7 +238,6 @@ export function NavigationScreen({
   async function refreshWatchers() {
     try {
       const result = await listWatchers(true);
-      setLine(result.line);
       setWatchers(result.watchers);
       setWatchError(null);
     } catch (error) {
@@ -331,7 +328,7 @@ export function NavigationScreen({
                 {watchers === null ? <AppText variant="caption">Loading names…</AppText> : null}
                 {watchers?.length === 0 ? (
                   <AppText variant="caption">
-                    {line ? `No one yet. They can text ${line} and send their name.` : "No one has texted yet."}
+                    No one yet. They need to text the number on their Photon assignment and send their name.
                   </AppText>
                 ) : null}
                 {watchers?.map((watcher) => (

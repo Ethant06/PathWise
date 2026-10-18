@@ -59,7 +59,7 @@ def create_watch(body: WatchStartRequest) -> WatchResponse:
     if problem:
         raise HTTPException(status_code=503, detail=problem)
     if watcher is None:
-        raise HTTPException(status_code=400, detail=f"That person has not texted {line_label()} yet.")
+        raise HTTPException(status_code=400, detail="That person has not texted their PathWise number yet.")
     session = start_watch(body.walker_name, watcher["name"], watcher["handle"], body.destination_name)
     return _response(session)
 

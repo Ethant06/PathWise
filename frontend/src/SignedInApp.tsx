@@ -9,6 +9,7 @@ import { HomeScreen, type Origin } from "./screens/HomeScreen";
 import { NavigationScreen } from "./screens/NavigationScreen";
 import { PlacesScreen } from "./screens/PlacesScreen";
 import { RoutesScreen } from "./screens/RoutesScreen";
+import { WalkBuddyScreen } from "./screens/WalkBuddyScreen";
 import { useTheme } from "./theme";
 import type { DataStatusResponse, PlaceHit, RouteResponse, UserPublic } from "./types";
 
@@ -17,7 +18,8 @@ type HomeView =
   | { name: "home" }
   | { name: "places" }
   | { name: "routes"; routes: RouteResponse }
-  | { name: "navigate"; routes: RouteResponse; choice: Choice };
+  | { name: "navigate"; routes: RouteResponse; choice: Choice }
+  | { name: "buddy" };
 
 function errorMessage(e: unknown, fallback: string): string {
   return e instanceof Error ? e.message : fallback;
@@ -85,6 +87,14 @@ export function SignedInApp({ user, onLogOut }: { user: UserPublic; onLogOut: ()
   let content;
   if (tab === "profile") {
     content = <AccountScreen onLogOut={onLogOut} user={user} />;
+  } else if (view.name === "buddy" && origin.status === "ready") {
+    content = (
+      <WalkBuddyScreen
+        latitude={origin.latitude}
+        longitude={origin.longitude}
+        onBack={() => setView({ name: "home" })}
+      />
+    );
   } else if (view.name === "places") {
     content = (
       <PlacesScreen
@@ -122,6 +132,7 @@ export function SignedInApp({ user, onLogOut }: { user: UserPublic; onLogOut: ()
         destination={destination}
         findError={findError}
         finding={finding}
+        onAskBuddy={() => setView({ name: "buddy" })}
         onFind={find}
         onPickDestination={() => setView({ name: "places" })}
         onRetryLocation={() => {
