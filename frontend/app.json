@@ -1,15 +1,18 @@
 {
   "expo": {
-    "name": "frontend",
-    "slug": "frontend",
+    "name": "PathWise",
+    "slug": "pathwise",
+    "scheme": "pathwise",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
     "userInterfaceStyle": "light",
     "ios": {
-      "supportsTablet": true
+      "supportsTablet": true,
+      "bundleIdentifier": "com.pathwise.app"
     },
     "android": {
+      "package": "com.pathwise.app",
       "adaptiveIcon": {
         "backgroundColor": "#E6F4FE",
         "foregroundImage": "./assets/android-icon-foreground.png",
@@ -29,7 +32,8 @@
         {
           "locationWhenInUsePermission": "SafePath uses your location as the starting point for walking routes."
         }
-      ]
+      ],
+      "expo-web-browser"
     ]
   }
 }

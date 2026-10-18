@@ -1,5 +1,3 @@
-import hashlib
-
 import jwt
 from fastapi import APIRouter, Depends, HTTPException
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
@@ -7,6 +5,7 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from app.database import get_db
+from app.google_auth import verify_google_id_token
 from app.models.user import User
 from app.schemas.auth import GoogleLoginRequest, LoginRequest, RegisterRequest, TokenResponse, UserPublic
 from app.schemas.common import ErrorBody
@@ -65,25 +64,24 @@ def login(body: LoginRequest, db: Session = Depends(get_db)) -> TokenResponse:
 
 @router.post("/google", response_model=TokenResponse, responses={400: {"model": ErrorBody}})
 def google_login(body: GoogleLoginRequest, db: Session = Depends(get_db)) -> TokenResponse:
-    """Accepts a Google ID token. Verification against Google is not connected yet."""
-    if body.id_token == "mock-google-token":
-        google_sub, name, email = ("google-demo-sub", "UW Student", "student@uw.edu")
-    else:
-        google_sub = body.id_token[:128]
-        name = "Google user"
-        digest = hashlib.sha256(google_sub.encode()).hexdigest()[:12]
-        email = f"g-{digest}@gmail.com"
+    """Sign in only after Google has verified the account and the user granted email access."""
+    try:
+        identity = verify_google_id_token(body.id_token)
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
 
-    user = db.scalar(select(User).where(User.google_sub == google_sub))
+    user = db.scalar(select(User).where(User.google_sub == identity.sub))
     if user is None:
-        user = db.scalar(select(User).where(User.email == email))
+        user = db.scalar(select(User).where(User.email == identity.email))
     if user is None:
-        user = User(email=email, name=name, google_sub=google_sub, password_hash=None)
+        user = User(email=identity.email, name=identity.name, google_sub=identity.sub, password_hash=None)
         db.add(user)
         db.commit()
         db.refresh(user)
     elif user.google_sub is None:
-        user.google_sub = google_sub
+        user.google_sub = identity.sub
+        if not user.name:
+            user.name = identity.name
         db.commit()
         db.refresh(user)
     return _token(user)

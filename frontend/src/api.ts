@@ -47,6 +47,12 @@ async function request<T>(
       const parsed = JSON.parse(text) as { detail?: unknown };
       if (typeof parsed.detail === "string") {
         detail = parsed.detail;
+      } else if (Array.isArray(parsed.detail)) {
+        detail = parsed.detail
+          .map((item) =>
+            item && typeof item === "object" && "msg" in item ? String(item.msg) : String(item),
+          )
+          .join(" ");
       }
     } catch {
       // Keep the raw body when the server did not return JSON.

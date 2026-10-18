@@ -41,8 +41,9 @@ def nearest_node(graph: nx.MultiDiGraph, lat: float, lng: float) -> int:
             best = node
     if best is None or best_d > NEAREST_NODE_MAX_M:
         raise ValueError(
-            "Point is too far from the UW walking network. "
-            "Choose origin and destination inside the University District map."
+            "Point is too far from the walking network. "
+            "Choose a point around UW, the University District, Roosevelt, "
+            "Wallingford, Fremont, Eastlake, Montlake, or Ravenna."
         )
     return best
 
@@ -132,6 +133,29 @@ def _path_geometry(graph: nx.MultiDiGraph, nodes: list[int], cost_fn) -> tuple[l
             [UW_CENTER_LNG + 0.0001, UW_CENTER_LAT],
         ]
     return coords, distance, duration, stats
+
+
+def _attach_endpoints(
+    coords: list[list[float]],
+    distance: float,
+    duration: float,
+    origin_lat: float,
+    origin_lng: float,
+    dest_lat: float,
+    dest_lng: float,
+) -> tuple[list[list[float]], float, float]:
+    """Connect the sidewalk path to the person's GPS point and the destination pin."""
+    line = list(coords)
+    extra_m = 0.0
+    start_m = _dist_m(origin_lat, origin_lng, line[0][1], line[0][0])
+    end_m = _dist_m(dest_lat, dest_lng, line[-1][1], line[-1][0])
+    if start_m > 1:
+        line.insert(0, [origin_lng, origin_lat])
+        extra_m += start_m
+    if end_m > 1:
+        line.append([dest_lng, dest_lat])
+        extra_m += end_m
+    return line, distance + extra_m, duration + extra_m / WALK_SPEED_MPS
 
 
 def _multigraph_weight(cost_fn):
@@ -320,8 +344,14 @@ def compute_routes(
     safety_coords, safety_dist, safety_dur, safety_stats = _path_geometry(
         graph, best_nodes, safety_cost_fn
     )
-    extra_min = max(0.0, (safety_dur - fast_dur) / 60.0)
     identical = _routes_close(fast_coords, safety_coords) or best_nodes == fast_nodes
+    fast_coords, fast_dist, fast_dur = _attach_endpoints(
+        fast_coords, fast_dist, fast_dur, origin_lat, origin_lng, dest_lat, dest_lng
+    )
+    safety_coords, safety_dist, safety_dur = _attach_endpoints(
+        safety_coords, safety_dist, safety_dur, origin_lat, origin_lng, dest_lat, dest_lng
+    )
+    extra_min = max(0.0, (safety_dur - fast_dur) / 60.0)
 
     fastest = {
         "geometry": {"type": "LineString", "coordinates": fast_coords},

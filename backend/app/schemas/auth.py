@@ -16,11 +16,9 @@ class GoogleLoginRequest(BaseModel):
     id_token: str = Field(
         min_length=1,
         description=(
-            "Google ID token from the phone sign-in SDK. "
-            "Until Google verification is connected, send mock-google-token "
-            "to sign in the demo student."
+            "Google ID token from the Google sign-in screen. "
+            "The server checks it with Google. The demo token is not accepted."
         ),
-        examples=["mock-google-token"],
     )
 
 

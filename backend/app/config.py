@@ -13,10 +13,11 @@ W_PLACES = 0.30
 W_SIDEWALKS = 0.20
 W_CROSSWALKS = 0.10
 
-# Same UW envelope the mock contract and the prototype use.
+# Campus plus the University District and nearby north Seattle:
+# Roosevelt, Wallingford, Fremont, Eastlake, Montlake, Ravenna, U-Village.
 UW_CENTER_LAT = 47.6553
 UW_CENTER_LNG = -122.3035
-BBOX = (-122.332, 47.645, -122.280, 47.672)
+BBOX = (-122.365, 47.620, -122.270, 47.700)
 
 LIGHT_BUFFER_M = 28.0
 SIDEWALK_BUFFER_M = 18.0
@@ -68,8 +69,37 @@ PUBLIC_PLACE_AMENITIES = {
     "bicycle_rental",
     "toilets",
     "fountain",
+    "school",
+    "kindergarten",
+    "place_of_worship",
+    "social_facility",
+    "bus_station",
+    "ferry_terminal",
+    "food_court",
 }
-PUBLIC_TOURISM = {"museum", "hotel", "attraction", "gallery", "hostel"}
+PUBLIC_TOURISM = {"museum", "hotel", "attraction", "gallery", "hostel", "apartment"}
+# Named buildings people search for, such as The Standard at Seattle.
+NAMED_BUILDINGS = {
+    "apartments",
+    "dormitory",
+    "residential",
+    "university",
+    "college",
+    "office",
+    "commercial",
+    "hotel",
+    "retail",
+    "public",
+    "civic",
+    "train_station",
+    "transportation",
+    "stadium",
+    "hospital",
+    "school",
+    "kindergarten",
+}
+NAMED_LEISURE = {"park", "stadium", "sports_centre", "fitness_centre", "garden", "nature_reserve"}
+NAMED_RAIL = {"station", "halt", "subway_entrance"}
 
 BACKEND_DIR = Path(__file__).resolve().parent.parent
 CACHE_DIR = BACKEND_DIR / "data" / "cache"
@@ -82,9 +112,11 @@ class Settings(BaseSettings):
     model_config = SettingsConfigDict(env_file=".env", extra="ignore")
 
     database_url: str = "sqlite:///./pathwise.db"
-    jwt_secret: str = "dev-only-change-me"
+    jwt_secret: str = "dev-only-pathwise-local-signing-key"
     jwt_algorithm: str = "HS256"
     access_token_minutes: int = 60 * 24 * 7
+    # Comma-separated OAuth client IDs. An ID token must be issued for one of these.
+    google_client_ids: str = ""
 
 
 settings = Settings()
