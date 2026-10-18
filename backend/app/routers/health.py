@@ -1,11 +1,12 @@
 from fastapi import APIRouter
 
-from app.mocks.health import mock_health
 from app.schemas.common import HealthResponse
+from app.walk import graph_status
 
 router = APIRouter(tags=["health"])
 
 
 @router.get("/api/health", response_model=HealthResponse)
 def health() -> HealthResponse:
-    return mock_health()
+    ready, _error = graph_status()
+    return HealthResponse(ok=True, ready=ready, mock=False)
