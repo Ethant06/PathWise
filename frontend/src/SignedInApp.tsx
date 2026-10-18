@@ -93,6 +93,26 @@ export function SignedInApp({ user, onLogOut }: { user: UserPublic; onLogOut: ()
         latitude={origin.latitude}
         longitude={origin.longitude}
         onBack={() => setView({ name: "home" })}
+        onStartRoute={async (place) => {
+          setDestination(place);
+          setFinding(true);
+          setFindError(null);
+          try {
+            const routes = await findRoutes({
+              origin_lat: origin.latitude,
+              origin_lng: origin.longitude,
+              dest_lat: place.lat,
+              dest_lng: place.lng,
+              departure_time: new Date().toISOString(),
+            });
+            setView({ name: "routes", routes });
+          } catch (e) {
+            setFindError(errorMessage(e, "Could not find routes."));
+            throw e;
+          } finally {
+            setFinding(false);
+          }
+        }}
       />
     );
   } else if (view.name === "places") {

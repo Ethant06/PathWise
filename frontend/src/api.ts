@@ -136,6 +136,7 @@ export function startWatch(body: {
 
 export type WalkBuddy = {
   answer: string;
+  places: PlaceHit[];
 };
 
 export function askWalkBuddy(body: { question: string; lat: number; lng: number }): Promise<WalkBuddy> {
