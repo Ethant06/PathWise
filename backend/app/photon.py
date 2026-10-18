@@ -1,4 +1,4 @@
-"""Send a walk alert into the iMessage thread the watcher already opened."""
+"""Find people who texted PathWise, and send a walk alert back to one of them."""
 
 from __future__ import annotations
 
@@ -11,18 +11,56 @@ _API = "https://api.photon.codes"
 
 def line_label() -> str:
     """The PathWise iMessage number, formatted for the phone screen."""
-    digits = _digits(settings.photon_agent_handle)
-    if len(digits) == 11 and digits.startswith("1"):
-        return f"+1 ({digits[1:4]}) {digits[4:7]}-{digits[7:]}"
-    return settings.photon_agent_handle or "the PathWise number"
+    return _format_phone(settings.photon_agent_handle) or "the PathWise number"
 
 
-def send_alert(text: str, idempotency_key: str) -> str | None:
+def list_watchers() -> tuple[list[dict], str | None]:
+    """People who have texted the PathWise number. A short capitalized text becomes their name."""
+    items, problem = _received_messages()
+    if problem or items is None:
+        return [], problem
+    grouped: dict[str, dict] = {}
+    for item in items:
+        parsed = _inbound(item)
+        if parsed is None:
+            continue
+        human, agent, text = parsed
+        if not _same_line(agent):
+            continue
+        key = _digits(human)
+        row = grouped.get(key)
+        if row is None:
+            phone = _format_phone(human)
+            row = {"handle": human, "phone": phone, "name": phone, "named": False}
+            grouped[key] = row
+        if not row["named"] and _looks_like_name(text):
+            row["name"] = " ".join(text.split())
+            row["named"] = True
+    watchers = [
+        {"name": row["name"], "handle": row["handle"], "phone": row["phone"]}
+        for row in grouped.values()
+    ]
+    watchers.sort(key=lambda watcher: watcher["name"].lower())
+    return watchers, None
+
+
+def find_watcher(handle: str) -> tuple[dict | None, str | None]:
+    watchers, problem = list_watchers()
+    if problem:
+        return None, problem
+    wanted = _digits(handle)
+    for watcher in watchers:
+        if _digits(watcher["handle"]) == wanted:
+            return watcher, None
+    return None, None
+
+
+def send_alert(text: str, idempotency_key: str, human_handle: str) -> str | None:
     """Return a short notice when the text could not be handed to Photon."""
-    thread, problem = _thread()
+    thread, problem = _thread_for(human_handle)
     if problem or thread is None:
         return problem
-    space_id, sender_id, _parent_id = thread
+    space_id, sender_id = thread
     try:
         response = httpx.post(
             f"{_API}/v1/projects/{settings.photon_project_id}/messages",
@@ -46,37 +84,61 @@ def send_alert(text: str, idempotency_key: str) -> str | None:
     return detail or "Photon did not accept the alert."
 
 
-def _thread() -> tuple[tuple[str, str, str] | None, str | None]:
+def _thread_for(human_handle: str) -> tuple[tuple[str, str] | None, str | None]:
+    items, problem = _received_messages()
+    if problem or items is None:
+        return None, problem
+    wanted = _digits(human_handle)
+    for item in items:
+        parsed = _inbound(item)
+        if parsed is None:
+            continue
+        human, agent, _text = parsed
+        if _digits(human) != wanted or not _same_line(agent):
+            continue
+        space = item.get("space") or {}
+        received = item.get("receivedBy") or {}
+        space_id = space.get("id")
+        sender_id = received.get("id")
+        if space_id and sender_id:
+            return (space_id, sender_id), None
+    return None, f"They need to text {line_label()} from their iPhone first."
+
+
+def _received_messages() -> tuple[list[dict] | None, str | None]:
     if not settings.photon_api_key or not settings.photon_project_id:
         return None, "Photon is not configured on the server."
-    try:
-        response = httpx.get(
-            f"{_API}/v1/projects/{settings.photon_project_id}/messages",
-            headers={"Authorization": f"Bearer {settings.photon_api_key}"},
-            params={"pageSize": 20, "platform": "imessage", "direction": "received", "order": "desc"},
-            timeout=20,
-        )
-    except httpx.HTTPError:
-        return None, "Photon could not be reached. The alert is still saved in the app."
-    if response.status_code != 200:
-        return None, _problem(response) or "Photon did not return the iMessage thread."
-    wanted = _digits(settings.photon_agent_handle)
-    fallback: tuple[str, str, str] | None = None
-    for item in response.json().get("items", []):
-        found = _direct_reply(item)
-        if found is None:
-            continue
-        space_id, sender_id, parent_id, handle = found
-        if wanted and _digits(handle) == wanted:
-            return (space_id, sender_id, parent_id), None
-        if fallback is None:
-            fallback = (space_id, sender_id, parent_id)
-    if fallback is not None:
-        return fallback, None
-    return None, "Text the PathWise number from your iPhone once. Alerts reply in that thread."
+    items: list[dict] = []
+    token: str | None = None
+    for _ in range(5):
+        params: dict[str, str | int] = {
+            "pageSize": 50,
+            "platform": "imessage",
+            "direction": "received",
+            "order": "desc",
+        }
+        if token:
+            params["pageToken"] = token
+        try:
+            response = httpx.get(
+                f"{_API}/v1/projects/{settings.photon_project_id}/messages",
+                headers={"Authorization": f"Bearer {settings.photon_api_key}"},
+                params=params,
+                timeout=20,
+            )
+        except httpx.HTTPError:
+            return None, "Photon could not be reached."
+        if response.status_code != 200:
+            return None, _problem(response) or "Photon did not return messages."
+        body = response.json()
+        items.extend(body.get("items") or [])
+        token = body.get("nextPageToken")
+        if not isinstance(token, str) or not token:
+            break
+    return items, None
 
 
-def _direct_reply(item: dict) -> tuple[str, str, str, str] | None:
+def _inbound(item: dict) -> tuple[str, str, str] | None:
     if item.get("status") != "received" or item.get("platform") != "imessage":
         return None
     sent = item.get("sentBy") or {}
@@ -84,13 +146,43 @@ def _direct_reply(item: dict) -> tuple[str, str, str, str] | None:
     space = item.get("space") or {}
     if sent.get("kind") != "human" or received.get("kind") != "agent" or space.get("kind") != "direct":
         return None
-    space_id = space.get("id")
-    sender_id = received.get("id")
-    parent_id = item.get("id")
-    handle = received.get("handle") or ""
-    if not space_id or not sender_id or not parent_id:
+    human = sent.get("handle") or ""
+    agent = received.get("handle") or ""
+    if not human or not agent:
         return None
-    return space_id, sender_id, parent_id, handle
+    content = item.get("content") or {}
+    text = content.get("text") if content.get("type") == "text" and isinstance(content.get("text"), str) else ""
+    return human, agent, text
+
+
+def _same_line(agent_handle: str) -> bool:
+    expected = _digits(settings.photon_agent_handle)
+    if not expected:
+        return True
+    return _digits(agent_handle) == expected
+
+
+def _looks_like_name(text: str) -> bool:
+    cleaned = " ".join(text.split())
+    if not cleaned or len(cleaned) > 40:
+        return False
+    words = cleaned.split(" ")
+    if not 1 <= len(words) <= 3:
+        return False
+    for word in words:
+        body = word.replace("-", "").replace("'", "")
+        if len(body) < 2 or not body.isalpha() or not word[0].isupper():
+            return False
+    return True
+
+
+def _format_phone(value: str) -> str:
+    digits = _digits(value)
+    if len(digits) == 11 and digits.startswith("1"):
+        return f"+1 ({digits[1:4]}) {digits[4:7]}-{digits[7:]}"
+    if len(digits) == 10:
+        return f"+1 ({digits[0:3]}) {digits[3:6]}-{digits[6:]}"
+    return value
 
 
 def _digits(value: str) -> str:

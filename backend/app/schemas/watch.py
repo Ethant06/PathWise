@@ -5,7 +5,7 @@ from pydantic import BaseModel, Field
 
 class WatchStartRequest(BaseModel):
     walker_name: str = Field(min_length=1, max_length=80)
-    watcher_name: str = Field(min_length=1, max_length=80)
+    watcher_handle: str = Field(min_length=8, max_length=20)
     destination_name: str = Field(min_length=1, max_length=120)
 
 
@@ -31,8 +31,12 @@ class WatchResponse(BaseModel):
     messages: list[WatchMessageOut]
 
 
-class WatchTestResponse(BaseModel):
+class WatcherOut(BaseModel):
+    name: str
+    handle: str
+    phone: str
+
+
+class WatchersResponse(BaseModel):
     line: str
-    text: str
-    delivered: bool
-    notice: str | None = None
+    watchers: list[WatcherOut]

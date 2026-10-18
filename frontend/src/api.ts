@@ -111,20 +111,24 @@ export type WatchSession = {
   messages: WatchMessage[];
 };
 
-export type WatchTest = {
-  line: string;
-  text: string;
-  delivered: boolean;
-  notice: string | null;
+export type Watcher = {
+  name: string;
+  handle: string;
+  phone: string;
 };
 
-export function sendWatchTest(): Promise<WatchTest> {
-  return request("/api/watch/test", { method: "POST" });
+export type WatcherList = {
+  line: string;
+  watchers: Watcher[];
+};
+
+export function listWatchers(): Promise<WatcherList> {
+  return request("/api/watch/watchers");
 }
 
 export function startWatch(body: {
   walker_name: string;
-  watcher_name: string;
+  watcher_handle: string;
   destination_name: string;
 }): Promise<WatchSession> {
   return request("/api/watch", { method: "POST", body: JSON.stringify(body) });

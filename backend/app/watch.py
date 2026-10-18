@@ -28,6 +28,7 @@ class WatchSession:
     id: str
     walker_name: str
     watcher_name: str
+    watcher_handle: str
     destination_name: str
     off_since: datetime | None = None
     still_since: datetime | None = None
@@ -40,11 +41,12 @@ class WatchSession:
     messages: list[WatchMessage] = field(default_factory=list)
 
 
-def start_watch(walker_name: str, watcher_name: str, destination_name: str) -> WatchSession:
+def start_watch(walker_name: str, watcher_name: str, watcher_handle: str, destination_name: str) -> WatchSession:
     session = WatchSession(
         id=uuid4().hex,
         walker_name=walker_name.strip() or "Someone",
         watcher_name=watcher_name.strip(),
+        watcher_handle=watcher_handle.strip(),
         destination_name=destination_name.strip() or "the destination",
     )
     _sessions[session.id] = session
