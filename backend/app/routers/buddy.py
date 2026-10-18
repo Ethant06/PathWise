@@ -13,7 +13,7 @@ router = APIRouter(tags=["buddy"])
     responses={503: {"model": ErrorBody}},
 )
 def walk_buddy(body: WalkBuddyRequest) -> WalkBuddyResponse:
-    answer, error = suggest_walk(body.question, body.lat, body.lng)
+    answer, places, error = suggest_walk(body.question, body.lat, body.lng)
     if error is not None or answer is None:
         raise HTTPException(status_code=503, detail=error or "The model did not answer.")
-    return WalkBuddyResponse(answer=answer)
+    return WalkBuddyResponse(answer=answer, places=places)

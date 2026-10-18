@@ -122,6 +122,8 @@ class Settings(BaseSettings):
     photon_project_id: str = ""
     photon_agent_handle: str = ""
     openai_api_key: str = ""
+    # Project upload token from the VEYZL Live Audits tab. Records Walk Buddy prompts only.
+    veyzl_api_key: str = ""
 
 
 settings = Settings()

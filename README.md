@@ -10,6 +10,8 @@ Coverage is campus plus the University District and nearby north Seattle (Roosev
 - Python 3.13
 - Expo Go for SDK 57 on a phone, on the same network as the laptop
 
+`.env` files are gitignored so API keys stay off GitHub. Each folder has a committed `.env.example`. Copy it to `.env` and fill in only what that step lists. Email sign-up, the map, and both routes work with the examples as copied. Google, Photon, and OpenAI stay blank until you add those keys. The walk graph is also gitignored (`backend/data/cache/`). `python scripts/ingest.py` rebuilds it.
+
 ## API
 
 ```powershell
@@ -31,6 +33,7 @@ Optional keys in `backend/.env` (never commit this file):
 | `GOOGLE_CLIENT_IDS` | Google sign-in |
 | `PHOTON_API_KEY`, `PHOTON_PROJECT_ID`, `PHOTON_AGENT_HANDLE` | Watcher texts |
 | `OPENAI_API_KEY` | Ask Walk Buddy |
+| `VEYZL_API_KEY` | Record each Walk Buddy answer for a VEYZL live audit |
 
 Email sign-up works with the defaults. Restart uvicorn after changing `.env`.
 
@@ -43,13 +46,7 @@ Copy-Item .env.example .env
 npm start
 ```
 
-In `frontend/.env`, point the phone at this laptop's live API (port **8020**, not 8000):
-
-```text
-EXPO_PUBLIC_API_URL=http://<laptop IPv4>:8020
-```
-
-`ipconfig` shows the IPv4 address. Restart Expo after editing `.env`. Scan the QR code in Expo Go. The map does not render in a browser.
+The copied `frontend/.env` points at `http://127.0.0.1:8020`, which works on the same machine. On a phone, set `EXPO_PUBLIC_API_URL` to `http://<laptop IPv4>:8020`. `ipconfig` shows that address. Restart Expo after editing `.env`. Scan the QR code in Expo Go. The map does not render in a browser.
 
 For Google sign-in, also set `EXPO_PUBLIC_GOOGLE_IOS_CLIENT_ID` and `EXPO_PUBLIC_GOOGLE_ANDROID_CLIENT_ID`. In Expo Go the iOS bundle ID is `host.exp.Exponent`.
 
