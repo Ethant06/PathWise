@@ -20,8 +20,8 @@ app = FastAPI(
     lifespan=lifespan,
     description=(
         "Live PathWise server. Accounts use SQLAlchemy and return a JWT. "
-        "Places, data status, and routes still return the sample contract data "
-        "from app/mocks until the UW layers replace them. "
+        "Data status reads the UW cache. "
+        "Places and routes still return the sample contract data from app/mocks. "
         "Google tokens are not verified with Google yet. "
         "There is no safety probability."
     ),

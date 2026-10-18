@@ -1,6 +1,6 @@
 # PathWise API
 
-Live server for the same contract as `mock-api`. Register, login, and Google sign-in store users and return a JWT. Places, data status, and routes still return the sample JSON in `app/mocks/` until the UW data layers replace those functions.
+Live server for the same contract as `mock-api`. Register, login, and Google sign-in store users and return a JWT. `GET /api/data-status` reads `data/cache/manifest.json` and `data/cache/walk_graph.pkl`. Places and routes still return the sample JSON in `app/mocks/`.
 
 Keep `app/schemas/` aligned with `mock-api/app/schemas/`. The frontend depends on those fields.
 
