@@ -6,7 +6,7 @@ from fastapi.responses import RedirectResponse
 
 from app.database import Base, engine
 from app.models.user import User  # noqa: F401
-from app.routers import auth, health, places, routes, status
+from app.routers import auth, health, places, routes, status, watch
 
 
 @asynccontextmanager
@@ -44,3 +44,4 @@ app.include_router(health.router)
 app.include_router(status.router)
 app.include_router(places.router)
 app.include_router(routes.router)
+app.include_router(watch.router)

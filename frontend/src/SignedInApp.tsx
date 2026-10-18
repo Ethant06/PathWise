@@ -97,12 +97,13 @@ export function SignedInApp({ user, onLogOut }: { user: UserPublic; onLogOut: ()
     );
   } else if (view.name === "navigate" && destination) {
     content = (
-      <NavigationScreen
-        choice={view.choice}
-        destination={destination}
-        onStop={(routes) => setView({ name: "routes", routes })}
-        routes={view.routes}
-      />
+        <NavigationScreen
+          choice={view.choice}
+          destination={destination}
+          onStop={(routes) => setView({ name: "routes", routes })}
+          routes={view.routes}
+          walkerName={user.name}
+        />
     );
   } else if (view.name === "routes" && origin.status === "ready" && destination) {
     content = (

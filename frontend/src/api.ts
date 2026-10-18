@@ -96,3 +96,43 @@ export function searchPlaces(query: string): Promise<PlaceHit[]> {
 export function findRoutes(body: RouteRequest): Promise<RouteResponse> {
   return request("/api/routes", { method: "POST", body: JSON.stringify(body) });
 }
+
+export type WatchMessage = {
+  kind: "off_route" | "still" | "arrived";
+  text: string;
+  sent_at: string;
+  delivered?: boolean;
+};
+
+export type WatchSession = {
+  id: string;
+  watcher_name: string;
+  notice: string | null;
+  messages: WatchMessage[];
+};
+
+export type WatchTest = {
+  line: string;
+  text: string;
+  delivered: boolean;
+  notice: string | null;
+};
+
+export function sendWatchTest(): Promise<WatchTest> {
+  return request("/api/watch/test", { method: "POST" });
+}
+
+export function startWatch(body: {
+  walker_name: string;
+  watcher_name: string;
+  destination_name: string;
+}): Promise<WatchSession> {
+  return request("/api/watch", { method: "POST", body: JSON.stringify(body) });
+}
+
+export function updateWatch(
+  id: string,
+  body: { off_route: boolean; arrived?: boolean; street?: string | null; lat?: number; lng?: number },
+): Promise<WatchSession> {
+  return request(`/api/watch/${id}`, { method: "POST", body: JSON.stringify(body) });
+}
