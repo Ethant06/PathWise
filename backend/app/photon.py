@@ -40,9 +40,7 @@ def _load_watchers() -> tuple[list[dict], str | None]:
         parsed = _inbound(item)
         if parsed is None:
             continue
-        human, agent, text = parsed
-        if not _same_line(agent):
-            continue
+        human, _agent, text = parsed
         key = _digits(human)
         row = grouped.get(key)
         if row is None:
@@ -109,8 +107,8 @@ def _thread_for(human_handle: str) -> tuple[tuple[str, str] | None, str | None]:
         parsed = _inbound(item)
         if parsed is None:
             continue
-        human, agent, _text = parsed
-        if _digits(human) != wanted or not _same_line(agent):
+        human, _agent, _text = parsed
+        if _digits(human) != wanted:
             continue
         space = item.get("space") or {}
         received = item.get("receivedBy") or {}
@@ -118,7 +116,7 @@ def _thread_for(human_handle: str) -> tuple[tuple[str, str] | None, str | None]:
         sender_id = received.get("id")
         if space_id and sender_id:
             return (space_id, sender_id), None
-    return None, f"They need to text {line_label()} from their iPhone first."
+    return None, "They need to text the number on their Photon assignment from their iPhone first."
 
 
 def _received_messages() -> tuple[list[dict] | None, str | None]:
@@ -169,13 +167,6 @@ def _inbound(item: dict) -> tuple[str, str, str] | None:
     content = item.get("content") or {}
     text = content.get("text") if content.get("type") == "text" and isinstance(content.get("text"), str) else ""
     return human, agent, text
-
-
-def _same_line(agent_handle: str) -> bool:
-    expected = _digits(settings.photon_agent_handle)
-    if not expected:
-        return True
-    return _digits(agent_handle) == expected
 
 
 def _looks_like_name(text: str) -> bool:

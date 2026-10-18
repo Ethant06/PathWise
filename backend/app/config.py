@@ -121,6 +121,7 @@ class Settings(BaseSettings):
     photon_api_key: str = ""
     photon_project_id: str = ""
     photon_agent_handle: str = ""
+    openai_api_key: str = ""
 
 
 settings = Settings()

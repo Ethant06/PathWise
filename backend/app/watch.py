@@ -8,7 +8,7 @@ from math import hypot
 from uuid import uuid4
 
 OFF_ROUTE_HOLD = timedelta(seconds=20)
-STILL_HOLD = timedelta(seconds=20)
+STILL_HOLD = timedelta(seconds=8)
 # Standing still jitters a few meters. Walking past this counts as moving again.
 STILL_METERS = 12.0
 
