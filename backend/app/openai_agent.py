@@ -46,3 +46,11 @@ def openai_chat(api_key: str, system: str, user: str) -> tuple[str | None, str |
 
 def configured_api_key() -> str:
     return settings.openai_api_key
+
+
+def cited_source(reply: str, source_names: list[str]) -> str | None:
+    """Return the cited source name, or None when the reply states an uncited claim."""
+    for name in source_names:
+        if f"[Source: {name}]" in reply:
+            return name
+    return None
