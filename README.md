@@ -57,6 +57,17 @@ For Google sign-in, also set `EXPO_PUBLIC_GOOGLE_IOS_CLIENT_ID` and `EXPO_PUBLIC
 
 In the Photon project, add the friend's iMessage number under iMessage assignments and send them the number Photon assigns to that phone. They text that number once and can send their name. On the walk, choose them under **Choose who is watching**. Alerts reply in that thread.
 
+## Walk Buddy (AI)
+
+Walk Buddy is the app's AI feature. This section describes the first version, merged in PR #12.
+
+- **Where:** **Ask Walk Buddy** on the Home screen opens a text box. It is enabled once the phone has a GPS fix.
+- **Request:** the app sends `POST /api/walk-buddy` with `{ "question", "lat", "lng" }`, using the phone's current GPS position. The endpoint takes no login token, like place search.
+- **Model:** `backend/app/buddy.py` calls OpenAI's Chat Completions API with `gpt-4o-mini`. The system prompt is one sentence: "You suggest walking routes around the University of Washington campus." The user message is `I'm at <lat>, <lng>. <question>`.
+- **Data sent to OpenAI:** the question text as typed and the exact coordinates.
+- **Answer:** the model's text is returned as `{ "answer" }` and shown on the screen as-is. It does not use PathWise's own route, lighting, or place data.
+- **Setup:** set `OPENAI_API_KEY` in `backend/.env`. Without it the endpoint returns `503` with "Walk Buddy needs an OpenAI API key on the server."
+
 ## Mock API
 
 `mock-api/` is a stand-in on port 8000 with the same route and place fields. The phone app above uses `backend/` on port 8020.
