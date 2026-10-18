@@ -6,7 +6,7 @@
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
-    "userInterfaceStyle": "light",
+    "userInterfaceStyle": "automatic",
     "ios": {
       "supportsTablet": true,
       "bundleIdentifier": "com.pathwise.app"
@@ -30,10 +30,11 @@
       [
         "expo-location",
         {
-          "locationWhenInUsePermission": "SafePath uses your location as the starting point for walking routes."
+          "locationWhenInUsePermission": "PathWise uses your location to walk you home and to tell a watcher if you stop."
         }
       ],
-      "expo-web-browser"
+      "expo-web-browser",
+      "expo-font"
     ]
   }
 }

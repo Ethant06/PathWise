@@ -117,6 +117,10 @@ class Settings(BaseSettings):
     access_token_minutes: int = 60 * 24 * 7
     # Comma-separated OAuth client IDs. An ID token must be issued for one of these.
     google_client_ids: str = ""
+    # Photon 2.0 project key, project id (pho_prj_...), and the shared iMessage line.
+    photon_api_key: str = ""
+    photon_project_id: str = ""
+    photon_agent_handle: str = ""
 
 
 settings = Settings()
