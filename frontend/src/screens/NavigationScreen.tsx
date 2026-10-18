@@ -1,13 +1,16 @@
 import * as Location from "expo-location";
-import { useEffect, useRef, useState } from "react";
-import { Modal, Platform, Pressable, ScrollView, StatusBar, StyleSheet, Text, View } from "react-native";
+import { useEffect, useMemo, useRef, useState } from "react";
+import { Pressable, StyleSheet, View } from "react-native";
 import MapView, { Marker, Polyline } from "react-native-maps";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { findRoutes, listWatchers, startWatch, updateWatch, type Watcher } from "../api";
-import { PrimaryButton } from "../components/PrimaryButton";
+import { AppText } from "../components/ui/AppText";
+import { Button } from "../components/ui/Button";
+import { UserDot } from "../components/ui/MapMarks";
 import { formatMiles, toLatLngs } from "../format";
 import { ARRIVE_METERS, distanceMeters, distanceToPath, OFF_ROUTE_METERS, type LatLng } from "../geo";
-import { colors } from "../theme";
+import { mapStroke, mutedMapStyle, useTheme, type Theme } from "../theme";
 import type { PlaceHit, RouteResponse } from "../types";
 
 type Choice = "fastest" | "safety_focused";
@@ -38,12 +41,15 @@ export function NavigationScreen({
   const [street, setStreet] = useState("Finding street");
   const [arrived, setArrived] = useState(false);
   const [watcherName, setWatcherName] = useState("");
-  const [picking, setPicking] = useState(false);
+  const [open, setOpen] = useState(false);
   const [watchers, setWatchers] = useState<Watcher[] | null>(null);
   const [line, setLine] = useState("");
   const [watchId, setWatchId] = useState<string | null>(null);
   const [watchError, setWatchError] = useState<string | null>(null);
   const watchIdRef = useRef<string | null>(null);
+  const theme = useTheme();
+  const insets = useSafeAreaInsets();
+  const styles = useMemo(() => createStyles(theme), [theme]);
   const arrivedRef = useRef(false);
   const hereRef = useRef<LatLng | null>(null);
   const streetAt = useRef(0);
@@ -51,14 +57,30 @@ export function NavigationScreen({
 
   const selected = choice === "fastest" ? activeRoutes.fastest : activeRoutes.safety_focused;
   const path = toLatLngs(selected.geometry);
+  const lineColor = choice === "fastest" ? theme.colors.routeFastest : theme.colors.routeSafer;
   const destinationCoord = { latitude: destination.lat, longitude: destination.lng };
   const milesAway = here ? formatMiles(distanceMeters(here, destinationCoord)) : "Locating";
   const detail = status === "Following your location" ? destination.name : status;
-  const lineColor = choice === "fastest" ? colors.blue : colors.teal;
 
   useEffect(() => {
     routesRef.current = activeRoutes;
   }, [activeRoutes]);
+
+  useEffect(() => {
+    let cancelled = false;
+    listWatchers()
+      .then((result) => {
+        if (cancelled) return;
+        setLine(result.line);
+        setWatchers(result.watchers);
+      })
+      .catch(() => {
+        if (!cancelled) setWatchers([]);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   useEffect(() => {
     let subscription: Location.LocationSubscription | null = null;
@@ -215,22 +237,21 @@ export function NavigationScreen({
     }
   }
 
-  async function openPicker() {
-    setPicking(true);
-    setWatchError(null);
-    setWatchers(null);
+  async function refreshWatchers() {
     try {
-      const result = await listWatchers();
+      const result = await listWatchers(true);
       setLine(result.line);
       setWatchers(result.watchers);
+      setWatchError(null);
     } catch (error) {
-      setWatchers([]);
       setWatchError(error instanceof Error ? error.message : "Could not load people who texted.");
     }
   }
 
   async function beginWatch(watcher: Watcher) {
     setWatchError(null);
+    setOpen(false);
+    setWatcherName(watcher.name);
     try {
       const session = await startWatch({
         walker_name: walkerName.trim() || "Someone",
@@ -240,9 +261,10 @@ export function NavigationScreen({
       setWatcherName(session.watcher_name);
       watchIdRef.current = session.id;
       setWatchId(session.id);
-      setPicking(false);
       if (session.notice) setWatchError(session.notice);
     } catch (error) {
+      setWatcherName("");
+      setOpen(true);
       setWatchError(error instanceof Error ? error.message : "Could not start the watch.");
     }
   }
@@ -250,6 +272,7 @@ export function NavigationScreen({
   return (
     <View style={styles.screen}>
       <MapView
+        customMapStyle={mutedMapStyle}
         initialRegion={{
           latitude: here?.latitude ?? path[0]?.latitude ?? destination.lat,
           longitude: here?.longitude ?? path[0]?.longitude ?? destination.lng,
@@ -257,140 +280,116 @@ export function NavigationScreen({
           longitudeDelta: FOLLOW_DELTA,
         }}
         ref={mapRef}
-        showsUserLocation
+        showsCompass={false}
+        showsMyLocationButton={false}
+        showsPointsOfInterests={false}
+        showsUserLocation={false}
         style={styles.map}
+        userInterfaceStyle={theme.isDark ? "dark" : "light"}
       >
-        {path.length > 1 && <Polyline coordinates={path} strokeColor={lineColor} strokeWidth={6} />}
-        <Marker coordinate={destinationCoord} pinColor={colors.teal} title={destination.name} />
+        {path.length > 1 ? (
+          <Polyline
+            coordinates={path}
+            lineCap="round"
+            lineJoin="round"
+            strokeColor={lineColor}
+            strokeWidth={mapStroke.walked}
+          />
+        ) : null}
+        {here ? (
+          <Marker anchor={{ x: 0.5, y: 0.5 }} coordinate={here}>
+            <UserDot />
+          </Marker>
+        ) : null}
+        <Marker coordinate={destinationCoord} pinColor={theme.colors.routeSafer} title={destination.name} />
       </MapView>
 
-      <View pointerEvents="none" style={styles.statusCard}>
-        <Text style={styles.street}>{street}</Text>
-        <Text style={styles.miles}>{arrived ? "0.0 mi" : milesAway}</Text>
-        <Text style={styles.status}>{detail}</Text>
+      <View pointerEvents="none" style={[styles.statusCard, { top: insets.top + theme.space.lg }]}>
+        <AppText variant="title2">{street}</AppText>
+        <AppText variant="stat">{arrived || milesAway === "Locating" ? (arrived ? "0.0" : "—") : milesAway.replace(" mi", "")}</AppText>
+        <AppText variant="subhead">
+          {arrived ? "You arrived" : milesAway === "Locating" ? "Finding you" : `miles to ${detail}`}
+        </AppText>
       </View>
 
-      <View style={styles.stop}>
+      <View style={[styles.stop, { paddingBottom: insets.bottom + theme.space.lg }]}>
+        <View style={styles.handle} />
         {watchId ? (
-          <View style={styles.watchLive}>
-            <Text style={styles.watchLabel}>{watcherName.trim()} is watching</Text>
-          </View>
+          <AppText color={theme.colors.primary} variant="subhead">
+            {watcherName.trim()} is watching
+          </AppText>
         ) : (
           <View style={styles.watchSetup}>
-            <Text style={styles.watchText}>
-              Choose someone who already texted the PathWise number. They get the alert on that iPhone.
-            </Text>
-            <Pressable onPress={() => void openPicker()} style={styles.watchButton}>
-              <Text style={styles.watchButtonLabel}>Choose who is watching</Text>
-            </Pressable>
+            <AppText variant="subhead">They get a text if you stop, leave the path, or arrive.</AppText>
+            <Button
+              label={open ? "Hide names" : "Choose who is watching"}
+              onPress={() => setOpen((value) => !value)}
+              variant="secondary"
+            />
+            {open ? (
+              <View>
+                {watchers === null ? <AppText variant="caption">Loading names…</AppText> : null}
+                {watchers?.length === 0 ? (
+                  <AppText variant="caption">
+                    {line ? `No one yet. They can text ${line} and send their name.` : "No one has texted yet."}
+                  </AppText>
+                ) : null}
+                {watchers?.map((watcher) => (
+                  <Pressable key={watcher.handle} onPress={() => void beginWatch(watcher)} style={styles.watcherRow}>
+                    <AppText variant="headline">{watcher.name}</AppText>
+                    {watcher.name !== watcher.phone ? <AppText variant="caption">{watcher.phone}</AppText> : null}
+                  </Pressable>
+                ))}
+                <Button label="Refresh" onPress={() => void refreshWatchers()} variant="text" />
+              </View>
+            ) : null}
           </View>
         )}
-        {watchError ? <Text style={styles.watchError}>{watchError}</Text> : null}
-        <PrimaryButton label="Stop Navigation" onPress={() => onStop(activeRoutes)} />
+        {watchError ? (
+          <AppText style={{ color: theme.colors.error }} variant="caption">
+            {watchError}
+          </AppText>
+        ) : null}
+        <Button haptic="medium" label="End walk" onPress={() => onStop(activeRoutes)} />
       </View>
-
-      <Modal animationType="slide" onRequestClose={() => setPicking(false)} transparent visible={picking}>
-        <View style={styles.backdrop}>
-          <View style={styles.sheet}>
-            <Text style={styles.sheetTitle}>Who is watching?</Text>
-            <Text style={styles.watchText}>
-              {line
-                ? `Have them text ${line} and send their name, such as Maya. Then they appear here.`
-                : "Have them text the PathWise number and send their name. Then they appear here."}
-            </Text>
-            {watchError ? <Text style={styles.watchError}>{watchError}</Text> : null}
-            <ScrollView style={styles.sheetList}>
-              {watchers === null ? <Text style={styles.watchText}>Looking for people who texted…</Text> : null}
-              {watchers?.length === 0 ? <Text style={styles.watchText}>No one has texted yet.</Text> : null}
-              {watchers?.map((watcher) => (
-                <Pressable key={watcher.handle} onPress={() => void beginWatch(watcher)} style={styles.watcherRow}>
-                  <Text style={styles.watcherName}>{watcher.name}</Text>
-                  {watcher.name !== watcher.phone ? <Text style={styles.watcherPhone}>{watcher.phone}</Text> : null}
-                </Pressable>
-              ))}
-            </ScrollView>
-            <View style={styles.sheetActions}>
-              <Pressable onPress={() => void openPicker()} style={styles.watchButton}>
-                <Text style={styles.watchButtonLabel}>Refresh</Text>
-              </Pressable>
-              <Pressable onPress={() => setPicking(false)} style={styles.watchButton}>
-                <Text style={styles.watchButtonLabel}>Close</Text>
-              </Pressable>
-            </View>
-          </View>
-        </View>
-      </Modal>
     </View>
   );
 }
 
-const styles = StyleSheet.create({
-  screen: {
-    backgroundColor: colors.surface,
-    flex: 1,
-    paddingTop: Platform.OS === "android" ? StatusBar.currentHeight ?? 0 : 0,
-  },
-  map: { flex: 1 },
-  statusCard: {
-    backgroundColor: "rgba(255,255,255,0.96)",
-    borderColor: colors.line,
-    borderRadius: 16,
-    borderWidth: 1,
-    left: 16,
-    paddingHorizontal: 14,
-    paddingVertical: 12,
-    position: "absolute",
-    right: 16,
-    top: (Platform.OS === "android" ? StatusBar.currentHeight ?? 0 : 54) + 36,
-  },
-  street: { color: colors.ink, fontSize: 18, fontWeight: "700" },
-  miles: { color: colors.teal, fontSize: 28, fontWeight: "700", marginTop: 2 },
-  status: { color: colors.muted, fontSize: 12, marginTop: 4 },
-  stop: {
-    backgroundColor: colors.surface,
-    borderTopColor: colors.line,
-    borderTopWidth: 1,
-    gap: 10,
-    paddingBottom: 24,
-    paddingHorizontal: 20,
-    paddingTop: 12,
-  },
-  watchSetup: { gap: 8 },
-  watchButton: {
-    backgroundColor: colors.tealSoft,
-    borderRadius: 12,
-    justifyContent: "center",
-    paddingHorizontal: 12,
-    height: 44,
-  },
-  watchButtonLabel: { color: colors.teal, fontSize: 13, fontWeight: "700" },
-  watchLive: { gap: 2 },
-  watchLabel: { color: colors.teal, fontSize: 12, fontWeight: "700" },
-  watchText: { color: colors.ink, fontSize: 13 },
-  watchError: { color: colors.danger, fontSize: 12, fontWeight: "600" },
-  backdrop: {
-    backgroundColor: "rgba(28,20,48,0.45)",
-    flex: 1,
-    justifyContent: "flex-end",
-  },
-  sheet: {
-    backgroundColor: colors.surface,
-    borderTopLeftRadius: 20,
-    borderTopRightRadius: 20,
-    gap: 10,
-    maxHeight: "80%",
-    paddingBottom: 28,
-    paddingHorizontal: 20,
-    paddingTop: 18,
-  },
-  sheetTitle: { color: colors.ink, fontSize: 20, fontWeight: "700" },
-  sheetList: { flexGrow: 0, maxHeight: 320 },
-  watcherRow: {
-    borderBottomColor: colors.line,
-    borderBottomWidth: 1,
-    paddingVertical: 12,
-  },
-  watcherName: { color: colors.ink, fontSize: 16, fontWeight: "700" },
-  watcherPhone: { color: colors.muted, fontSize: 13, marginTop: 2 },
-  sheetActions: { flexDirection: "row", gap: 8 },
-});
+function createStyles(theme: Theme) {
+  return StyleSheet.create({
+    screen: { backgroundColor: theme.colors.background, flex: 1 },
+    map: { flex: 1 },
+    statusCard: {
+      backgroundColor: theme.colors.surface,
+      borderRadius: theme.radius.lg,
+      left: theme.space.lg,
+      padding: theme.space.lg,
+      position: "absolute",
+      right: theme.space.lg,
+      ...theme.shadow.md,
+    },
+    stop: {
+      backgroundColor: theme.colors.surface,
+      borderTopLeftRadius: theme.radius.xl,
+      borderTopRightRadius: theme.radius.xl,
+      gap: theme.space.md,
+      paddingHorizontal: theme.space.lg,
+      paddingTop: theme.space.md,
+      ...theme.shadow.lg,
+    },
+    handle: {
+      alignSelf: "center",
+      backgroundColor: theme.colors.border,
+      borderRadius: theme.radius.full,
+      height: theme.space.xs,
+      width: theme.size.buttonSm,
+    },
+    watchSetup: { gap: theme.space.sm },
+    watcherRow: {
+      borderBottomColor: theme.colors.border,
+      borderBottomWidth: 1,
+      paddingVertical: theme.space.md,
+    },
+  });
+}

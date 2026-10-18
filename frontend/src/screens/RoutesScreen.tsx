@@ -1,12 +1,14 @@
 import { useRef, useState } from "react";
-import { Platform, Pressable, ScrollView, StatusBar, StyleSheet, Text, View } from "react-native";
+import { Pressable, View } from "react-native";
 import MapView, { Marker, Polyline } from "react-native-maps";
 
 import { Glyph, type GlyphName } from "../components/Glyph";
-import { PrimaryButton } from "../components/PrimaryButton";
 import { ScreenHeader } from "../components/ScreenHeader";
+import { AppText } from "../components/ui/AppText";
+import { Button } from "../components/ui/Button";
+import { Screen } from "../components/ui/Screen";
 import { formatMiles, formatMinutes, toLatLngs } from "../format";
-import { colors } from "../theme";
+import { mapStroke, mutedMapStyle, useTheme, uw } from "../theme";
 import type { PlaceHit, RoutePayload, RouteResponse } from "../types";
 
 type Choice = "fastest" | "safety_focused";
@@ -17,7 +19,6 @@ function RouteCard({
   route,
   recommended,
   selected,
-  tone,
   onPress,
 }: {
   glyph: GlyphName;
@@ -25,35 +26,73 @@ function RouteCard({
   route: RoutePayload;
   recommended?: boolean;
   selected: boolean;
-  tone: "blue" | "teal";
   onPress: () => void;
 }) {
+  const theme = useTheme();
   return (
     <Pressable
       accessibilityRole="radio"
       accessibilityState={{ selected }}
       onPress={onPress}
-      style={[styles.routeCard, selected && styles.routeCardSelected]}
+      style={({ pressed }) => [
+        {
+          alignItems: "flex-start",
+          backgroundColor: selected ? theme.colors.primarySoft : theme.colors.surface,
+          borderColor: selected ? theme.colors.primary : theme.colors.border,
+          borderRadius: theme.radius.lg,
+          borderWidth: 1,
+          flexDirection: "row",
+          gap: theme.space.md,
+          padding: theme.space.lg,
+        },
+        pressed && { transform: [{ scale: theme.motion.pressScale }] },
+      ]}
     >
-      <View style={[styles.routeIcon, tone === "blue" ? styles.iconBlue : styles.iconTeal]}>
-        <Glyph color={tone === "blue" ? colors.blue : colors.teal} name={glyph} />
+      <View
+        style={{
+          alignItems: "center",
+          backgroundColor: theme.colors.surface,
+          borderRadius: theme.radius.full,
+          height: 36,
+          justifyContent: "center",
+          width: 36,
+        }}
+      >
+        <Glyph color={theme.colors.primary} name={glyph} />
       </View>
-      <View style={styles.routeContent}>
-        <View style={styles.titleRow}>
-          <Text style={styles.routeName}>{name}</Text>
-          {recommended && (
-            <View style={styles.recommended}>
-              <Text style={styles.recommendedText}>Recommended</Text>
+      <View style={{ flex: 1, gap: theme.space.xs }}>
+        <View style={{ alignItems: "center", flexDirection: "row", gap: theme.space.sm }}>
+          <AppText variant="headline">{name}</AppText>
+          {recommended ? (
+            <View
+              style={{
+                backgroundColor: uw.huskyGoldTint,
+                borderRadius: theme.radius.full,
+                paddingHorizontal: theme.space.sm,
+                paddingVertical: theme.space.xxs,
+              }}
+            >
+              <AppText color={theme.colors.goldText} variant="caption">
+                Recommended
+              </AppText>
             </View>
-          )}
+          ) : null}
         </View>
-        <View style={styles.stats}>
-          <Text style={styles.stat}>{formatMinutes(route.metrics.duration_min)}</Text>
-          <Text style={styles.stat}>{formatMiles(route.metrics.distance_m)}</Text>
-        </View>
-        <Text style={styles.description}>{route.explanation}</Text>
+        <AppText variant="subhead">
+          {formatMinutes(route.metrics.duration_min)} · {formatMiles(route.metrics.distance_m)}
+        </AppText>
+        <AppText variant="caption">{route.explanation}</AppText>
       </View>
-      <View style={[styles.radio, selected && styles.radioSelected]} />
+      <View
+        style={{
+          borderColor: selected ? theme.colors.primary : theme.colors.textTertiary,
+          borderRadius: theme.radius.full,
+          borderWidth: selected ? 5 : 1,
+          height: 18,
+          marginTop: theme.space.xxs,
+          width: 18,
+        }}
+      />
     </Pressable>
   );
 }
@@ -71,6 +110,7 @@ export function RoutesScreen({
   onBack: () => void;
   onStart: (choice: Choice) => void;
 }) {
+  const theme = useTheme();
   const [selected, setSelected] = useState<Choice>("safety_focused");
   const mapRef = useRef<MapView>(null);
 
@@ -81,128 +121,88 @@ export function RoutesScreen({
   function fitRoutes() {
     mapRef.current?.fitToCoordinates([origin, destinationCoord, ...fastest, ...safer], {
       animated: false,
-      edgePadding: { top: 24, right: 24, bottom: 24, left: 24 },
+      edgePadding: { top: theme.space.xxl, right: theme.space.xxl, bottom: theme.space.xxl, left: theme.space.xxl },
     });
   }
 
-  // Draw the selected route last so it sits on top.
-  const fastestLine = { key: "fastest" as const, coords: fastest, color: colors.blue };
-  const saferLine = { key: "safety_focused" as const, coords: safer, color: colors.teal };
+  const fastestLine = { key: "fastest" as const, coords: fastest, color: theme.colors.routeFastest };
+  const saferLine = { key: "safety_focused" as const, coords: safer, color: theme.colors.routeSafer };
   const lines = selected === "fastest" ? [saferLine, fastestLine] : [fastestLine, saferLine];
 
   return (
-    <ScrollView contentContainerStyle={styles.screen} contentInsetAdjustmentBehavior="automatic">
-      <ScreenHeader eyebrow="Route options" onBack={onBack} title="Choose Your Route" />
-      <Text style={styles.intro}>From your location to {destination.name}</Text>
-
-      <View style={styles.list}>
-        <RouteCard
-          glyph="route"
-          name="Fastest Route"
-          onPress={() => setSelected("fastest")}
-          route={routes.fastest}
-          selected={selected === "fastest"}
-          tone="blue"
-        />
-        <RouteCard
-          glyph="check"
-          name="Safer Route"
-          onPress={() => setSelected("safety_focused")}
-          recommended
-          route={routes.safety_focused}
-          selected={selected === "safety_focused"}
-          tone="teal"
-        />
-      </View>
-      {routes.routes_identical && (
-        <Text style={styles.note}>Both options follow the same path for this trip.</Text>
-      )}
-
-      <View style={styles.mapSection}>
-        <View style={styles.mapTitle}>
-          <Text style={styles.h2}>Route preview</Text>
-          {selected === "safety_focused" && (
-            <View style={styles.chip}>
-              <Text style={styles.chipText}>Safety optimized</Text>
-            </View>
-          )}
+    <Screen scroll>
+      <View style={{ gap: theme.space.lg }}>
+        <ScreenHeader eyebrow="Routes" onBack={onBack} title="Choose a walk" />
+        <AppText variant="subhead">From where you are to {destination.name}</AppText>
+        <View style={{ gap: theme.space.md }}>
+          <RouteCard
+            glyph="route"
+            name="Fastest"
+            onPress={() => setSelected("fastest")}
+            route={routes.fastest}
+            selected={selected === "fastest"}
+          />
+          <RouteCard
+            glyph="check"
+            name="Safer"
+            onPress={() => setSelected("safety_focused")}
+            recommended
+            route={routes.safety_focused}
+            selected={selected === "safety_focused"}
+          />
         </View>
-        <View style={styles.map}>
-          <MapView onMapReady={fitRoutes} ref={mapRef} style={StyleSheet.absoluteFill}>
-            {lines.map((line) => (
-              <Polyline
-                coordinates={line.coords}
-                key={line.key}
-                strokeColor={line.key === selected ? line.color : `${line.color}66`}
-                strokeWidth={line.key === selected ? 5 : 3}
-              />
-            ))}
-            <Marker coordinate={origin} pinColor={colors.blue} title="Start" />
-            <Marker coordinate={destinationCoord} pinColor={colors.teal} title={destination.name} />
-          </MapView>
+        {routes.routes_identical ? (
+          <AppText variant="caption">Both options follow the same path for this trip.</AppText>
+        ) : null}
+        <View style={{ gap: theme.space.sm }}>
+          <AppText variant="title2">Preview</AppText>
+          <View
+            style={{
+              backgroundColor: theme.colors.surfaceAlt,
+              borderColor: theme.colors.border,
+              borderRadius: theme.radius.lg,
+              borderWidth: 1,
+              height: 176,
+              overflow: "hidden",
+            }}
+          >
+            <MapView
+              customMapStyle={mutedMapStyle}
+              onMapReady={fitRoutes}
+              ref={mapRef}
+              showsCompass={false}
+              showsPointsOfInterests={false}
+              style={{ flex: 1 }}
+              userInterfaceStyle={theme.isDark ? "dark" : "light"}
+            >
+              {lines.map((line) => (
+                <Polyline
+                  coordinates={line.coords}
+                  key={line.key}
+                  lineCap="round"
+                  lineJoin="round"
+                  strokeColor={line.key === selected ? line.color : `${line.color}66`}
+                  strokeWidth={mapStroke.walked}
+                />
+              ))}
+              <Marker coordinate={origin} title="Start">
+                <View
+                  style={{
+                    backgroundColor: theme.colors.primary,
+                    borderColor: theme.colors.surface,
+                    borderRadius: theme.radius.full,
+                    borderWidth: 2,
+                    height: 12,
+                    width: 12,
+                  }}
+                />
+              </Marker>
+              <Marker coordinate={destinationCoord} pinColor={theme.colors.routeSafer} title={destination.name} />
+            </MapView>
+          </View>
         </View>
+        <Button haptic="medium" label="Start walk" onPress={() => onStart(selected)} />
       </View>
-
-      <View style={styles.primary}>
-        <PrimaryButton label="Start Navigation" onPress={() => onStart(selected)} />
-      </View>
-    </ScrollView>
+    </Screen>
   );
 }
-
-const styles = StyleSheet.create({
-  screen: {
-    paddingHorizontal: 20,
-    paddingTop: (Platform.OS === "android" ? StatusBar.currentHeight ?? 0 : 0) + 24,
-    paddingBottom: 18,
-  },
-  intro: { color: colors.muted, fontSize: 12, marginBottom: 17, marginTop: 10 },
-  list: { gap: 10 },
-  note: { color: colors.muted, fontSize: 11, marginTop: 8 },
-  routeCard: {
-    alignItems: "flex-start",
-    backgroundColor: colors.surface,
-    borderColor: colors.line,
-    borderRadius: 17,
-    borderWidth: 1.5,
-    flexDirection: "row",
-    gap: 11,
-    paddingHorizontal: 13,
-    paddingVertical: 14,
-  },
-  routeCardSelected: { backgroundColor: colors.tealSoft, borderColor: colors.teal },
-  routeIcon: { alignItems: "center", borderRadius: 11, height: 39, justifyContent: "center", width: 39 },
-  iconBlue: { backgroundColor: colors.blueSoft },
-  iconTeal: { backgroundColor: colors.tealSoft },
-  routeContent: { flex: 1, minWidth: 0 },
-  titleRow: { alignItems: "center", flexDirection: "row", gap: 7, minHeight: 18 },
-  routeName: { color: colors.ink, fontSize: 14, fontWeight: "700" },
-  recommended: { backgroundColor: colors.tealSoft, borderRadius: 5, paddingHorizontal: 5, paddingVertical: 3 },
-  recommendedText: { color: colors.teal, fontSize: 8, fontWeight: "800", textTransform: "uppercase" },
-  stats: { flexDirection: "row", gap: 10, marginVertical: 5 },
-  stat: { color: colors.muted, fontSize: 11 },
-  description: { color: colors.muted, fontSize: 10 },
-  radio: {
-    borderColor: colors.mutedLight,
-    borderRadius: 9,
-    borderWidth: 1.5,
-    height: 18,
-    marginTop: 2,
-    width: 18,
-  },
-  radioSelected: { borderColor: colors.teal, borderWidth: 5 },
-  mapSection: { marginTop: 19 },
-  mapTitle: { alignItems: "center", flexDirection: "row", justifyContent: "space-between", marginBottom: 10 },
-  h2: { color: colors.ink, fontSize: 17, fontWeight: "700", letterSpacing: -0.25 },
-  chip: { backgroundColor: colors.tealSoft, borderRadius: 20, paddingHorizontal: 8, paddingVertical: 5 },
-  chipText: { color: colors.teal, fontSize: 9, fontWeight: "700" },
-  map: {
-    backgroundColor: "#f0f4f4",
-    borderColor: colors.line,
-    borderRadius: 20,
-    borderWidth: 1,
-    height: 174,
-    overflow: "hidden",
-  },
-  primary: { marginTop: 16 },
-});

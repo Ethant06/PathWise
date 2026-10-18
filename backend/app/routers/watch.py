@@ -43,8 +43,8 @@ def _response(session) -> WatchResponse:
 
 
 @router.get("/api/watch/watchers", response_model=WatchersResponse)
-def read_watchers() -> WatchersResponse:
-    watchers, problem = list_watchers()
+def read_watchers(fresh: bool = False) -> WatchersResponse:
+    watchers, problem = list_watchers(fresh=fresh)
     if problem:
         raise HTTPException(status_code=503, detail=problem)
     return WatchersResponse(

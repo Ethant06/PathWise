@@ -1,9 +1,9 @@
-import { Pressable, StyleSheet, Text, View } from "react-native";
+import { Pressable, View } from "react-native";
 
-import { colors } from "../theme";
+import { useTheme } from "../theme";
 import { Glyph } from "./Glyph";
+import { AppText } from "./ui/AppText";
 
-/** Back button, teal eyebrow, and title from the Figma route screen header. */
 export function ScreenHeader({
   eyebrow,
   title,
@@ -13,47 +13,34 @@ export function ScreenHeader({
   title: string;
   onBack?: () => void;
 }) {
+  const theme = useTheme();
   return (
-    <View style={styles.header}>
-      {onBack && (
+    <View style={{ alignItems: "center", flexDirection: "row", gap: theme.space.md, minHeight: theme.size.touchMin }}>
+      {onBack ? (
         <Pressable
           accessibilityLabel="Go back"
           accessibilityRole="button"
+          hitSlop={theme.space.sm}
           onPress={onBack}
-          style={({ pressed }) => [styles.iconButton, pressed && styles.pressed]}
+          style={({ pressed }) => [
+            {
+              alignItems: "center",
+              backgroundColor: theme.colors.surfaceAlt,
+              borderRadius: theme.radius.full,
+              height: theme.size.iconButton,
+              justifyContent: "center",
+              width: theme.size.iconButton,
+            },
+            pressed && { transform: [{ scale: theme.motion.pressScale }] },
+          ]}
         >
-          <Glyph color={colors.ink} name="chevron-left" />
+          <Glyph color={theme.colors.textPrimary} name="chevron-left" />
         </Pressable>
-      )}
-      <View style={styles.copy}>
-        {eyebrow && <Text style={styles.eyebrow}>{eyebrow}</Text>}
-        <Text style={styles.title}>{title}</Text>
+      ) : null}
+      <View style={{ flex: 1, gap: theme.space.xs }}>
+        {eyebrow ? <AppText variant="overline">{eyebrow}</AppText> : null}
+        <AppText variant="title1">{title}</AppText>
       </View>
     </View>
   );
 }
-
-const styles = StyleSheet.create({
-  header: { alignItems: "center", flexDirection: "row", gap: 12, minHeight: 46 },
-  iconButton: {
-    alignItems: "center",
-    backgroundColor: colors.surfaceSoft,
-    borderColor: colors.line,
-    borderRadius: 12,
-    borderWidth: 1,
-    height: 42,
-    justifyContent: "center",
-    width: 42,
-  },
-  pressed: { backgroundColor: colors.line },
-  copy: { flex: 1 },
-  eyebrow: {
-    color: colors.teal,
-    fontSize: 10,
-    fontWeight: "800",
-    letterSpacing: 1,
-    marginBottom: 3,
-    textTransform: "uppercase",
-  },
-  title: { color: colors.ink, fontSize: 24, fontWeight: "700", letterSpacing: -0.65 },
-});

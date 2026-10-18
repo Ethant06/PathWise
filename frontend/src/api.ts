@@ -122,8 +122,8 @@ export type WatcherList = {
   watchers: Watcher[];
 };
 
-export function listWatchers(): Promise<WatcherList> {
-  return request("/api/watch/watchers");
+export function listWatchers(fresh = false): Promise<WatcherList> {
+  return request(fresh ? "/api/watch/watchers?fresh=true" : "/api/watch/watchers");
 }
 
 export function startWatch(body: {

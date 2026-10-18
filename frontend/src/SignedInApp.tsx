@@ -1,6 +1,6 @@
 import * as Location from "expo-location";
 import { useEffect, useState } from "react";
-import { StyleSheet, View } from "react-native";
+import { View } from "react-native";
 
 import { dataStatus, findRoutes } from "./api";
 import { BottomNav, type Tab } from "./components/BottomNav";
@@ -9,7 +9,7 @@ import { HomeScreen, type Origin } from "./screens/HomeScreen";
 import { NavigationScreen } from "./screens/NavigationScreen";
 import { PlacesScreen } from "./screens/PlacesScreen";
 import { RoutesScreen } from "./screens/RoutesScreen";
-import { colors } from "./theme";
+import { useTheme } from "./theme";
 import type { DataStatusResponse, PlaceHit, RouteResponse, UserPublic } from "./types";
 
 type Choice = "fastest" | "safety_focused";
@@ -36,6 +36,7 @@ async function locate(): Promise<Origin> {
 }
 
 export function SignedInApp({ user, onLogOut }: { user: UserPublic; onLogOut: () => void }) {
+  const theme = useTheme();
   const [tab, setTab] = useState<Tab>("home");
   const [view, setView] = useState<HomeView>({ name: "home" });
   const [status, setStatus] = useState<DataStatusResponse | null>(null);
@@ -135,14 +136,9 @@ export function SignedInApp({ user, onLogOut }: { user: UserPublic; onLogOut: ()
   }
 
   return (
-    <View style={styles.container}>
-      <View style={styles.content}>{content}</View>
+    <View style={{ backgroundColor: theme.colors.background, flex: 1 }}>
+      <View style={{ flex: 1 }}>{content}</View>
       {view.name !== "navigate" && <BottomNav onChange={setTab} tab={tab} />}
     </View>
   );
 }
-
-const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: colors.surface },
-  content: { flex: 1 },
-});

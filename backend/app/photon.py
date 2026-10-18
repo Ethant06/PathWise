@@ -2,11 +2,16 @@
 
 from __future__ import annotations
 
+from time import monotonic
+
 import httpx
 
 from app.config import settings
 
 _API = "https://api.photon.codes"
+_CACHE_SECONDS = 45.0
+_cached_watchers: tuple[list[dict], str | None] | None = None
+_cached_at = 0.0
 
 
 def line_label() -> str:
@@ -14,8 +19,19 @@ def line_label() -> str:
     return _format_phone(settings.photon_agent_handle) or "the PathWise number"
 
 
-def list_watchers() -> tuple[list[dict], str | None]:
+def list_watchers(fresh: bool = False) -> tuple[list[dict], str | None]:
     """People who have texted the PathWise number. A short capitalized text becomes their name."""
+    global _cached_watchers, _cached_at
+    if not fresh and _cached_watchers is not None and monotonic() - _cached_at < _CACHE_SECONDS:
+        return _cached_watchers
+    loaded = _load_watchers()
+    if loaded[1] is None:
+        _cached_watchers = loaded
+        _cached_at = monotonic()
+    return loaded
+
+
+def _load_watchers() -> tuple[list[dict], str | None]:
     items, problem = _received_messages()
     if problem or items is None:
         return [], problem
