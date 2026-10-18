@@ -23,7 +23,13 @@
     },
     "plugins": [
       "expo-status-bar",
-      "expo-secure-store"
+      "expo-secure-store",
+      [
+        "expo-location",
+        {
+          "locationWhenInUsePermission": "SafePath uses your location as the starting point for walking routes."
+        }
+      ]
     ]
   }
 }

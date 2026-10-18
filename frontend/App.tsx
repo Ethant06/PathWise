@@ -3,9 +3,9 @@ import { useEffect, useState } from "react";
 import { ActivityIndicator, StyleSheet, View } from "react-native";
 
 import { currentUser } from "./src/api";
-import { AccountScreen } from "./src/screens/AccountScreen";
 import { AuthScreen } from "./src/screens/AuthScreen";
 import { clearToken, getToken, saveToken } from "./src/session";
+import { SignedInApp } from "./src/SignedInApp";
 import { colors } from "./src/theme";
 import type { TokenResponse, UserPublic } from "./src/types";
 
@@ -54,7 +54,7 @@ export default function App() {
         </View>
       )}
       {session.status === "signedOut" && <AuthScreen onAuthenticated={handleAuthenticated} />}
-      {session.status === "signedIn" && <AccountScreen onLogOut={handleLogOut} user={session.user} />}
+      {session.status === "signedIn" && <SignedInApp onLogOut={handleLogOut} user={session.user} />}
       <StatusBar style="dark" />
     </View>
   );
