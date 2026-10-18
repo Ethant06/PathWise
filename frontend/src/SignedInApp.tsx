@@ -6,12 +6,18 @@ import { dataStatus, findRoutes } from "./api";
 import { BottomNav, type Tab } from "./components/BottomNav";
 import { AccountScreen } from "./screens/AccountScreen";
 import { HomeScreen, type Origin } from "./screens/HomeScreen";
+import { NavigationScreen } from "./screens/NavigationScreen";
 import { PlacesScreen } from "./screens/PlacesScreen";
 import { RoutesScreen } from "./screens/RoutesScreen";
 import { colors } from "./theme";
 import type { DataStatusResponse, PlaceHit, RouteResponse, UserPublic } from "./types";
 
-type HomeView = { name: "home" } | { name: "places" } | { name: "routes"; routes: RouteResponse };
+type Choice = "fastest" | "safety_focused";
+type HomeView =
+  | { name: "home" }
+  | { name: "places" }
+  | { name: "routes"; routes: RouteResponse }
+  | { name: "navigate"; routes: RouteResponse; choice: Choice };
 
 function errorMessage(e: unknown, fallback: string): string {
   return e instanceof Error ? e.message : fallback;
@@ -89,6 +95,15 @@ export function SignedInApp({ user, onLogOut }: { user: UserPublic; onLogOut: ()
         }}
       />
     );
+  } else if (view.name === "navigate" && destination) {
+    content = (
+      <NavigationScreen
+        choice={view.choice}
+        destination={destination}
+        onStop={(routes) => setView({ name: "routes", routes })}
+        routes={view.routes}
+      />
+    );
   } else if (view.name === "routes" && origin.status === "ready" && destination) {
     content = (
       <RoutesScreen
@@ -96,6 +111,7 @@ export function SignedInApp({ user, onLogOut }: { user: UserPublic; onLogOut: ()
         onBack={() => setView({ name: "home" })}
         origin={{ latitude: origin.latitude, longitude: origin.longitude }}
         routes={view.routes}
+        onStart={(choice) => setView({ name: "navigate", routes: view.routes, choice })}
       />
     );
   } else {
@@ -120,7 +136,7 @@ export function SignedInApp({ user, onLogOut }: { user: UserPublic; onLogOut: ()
   return (
     <View style={styles.container}>
       <View style={styles.content}>{content}</View>
-      <BottomNav onChange={setTab} tab={tab} />
+      {view.name !== "navigate" && <BottomNav onChange={setTab} tab={tab} />}
     </View>
   );
 }

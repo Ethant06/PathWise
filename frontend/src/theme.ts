@@ -1,16 +1,19 @@
-/** Color tokens from the SafePath Figma Make file (src/index.css). */
+/**
+ * Purple theme. Text and buttons meet WCAG AA contrast on white:
+ * primary purple is about 8:1 with white, links about 6:1.
+ */
 export const colors = {
-  ink: "#17212b",
-  muted: "#6b7785",
-  mutedLight: "#98a3ad",
-  line: "#e7ecef",
+  ink: "#1c1430",
+  muted: "#4b5563",
+  mutedLight: "#5e6a75",
+  line: "#e7e4ef",
   surface: "#ffffff",
-  surfaceSoft: "#f5f8f9",
-  blue: "#1769e0",
-  blueSoft: "#eaf2ff",
-  teal: "#087f72",
-  tealDark: "#08685f",
-  tealSoft: "#e6f5f2",
+  surfaceSoft: "#f7f5fb",
+  blue: "#6d28d9",
+  blueSoft: "#ede9fe",
+  teal: "#5b21b6",
+  tealDark: "#4c1d95",
+  tealSoft: "#f3e8ff",
   danger: "#b42318",
   dangerSoft: "#fdecea",
 };

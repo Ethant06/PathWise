@@ -34,7 +34,7 @@ def live_data_status() -> DataStatusResponse:
         error = error or "Cached walk graph not found. Run: python scripts/ingest.py"
     ready = error is None and graph_ready and bool(manifest)
 
-    message = "UW walk graph ready." if ready else (error or "Not ready.")
+    message = "UW and nearby Seattle walk graph ready." if ready else (error or "Not ready.")
     return DataStatusResponse(
         ready=ready,
         message=message,
