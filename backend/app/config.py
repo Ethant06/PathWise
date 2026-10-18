@@ -1,6 +1,17 @@
 from pathlib import Path
+from zoneinfo import ZoneInfo
 
 from pydantic_settings import BaseSettings, SettingsConfigDict
+
+PACIFIC_TZ = ZoneInfo("America/Los_Angeles")
+WALK_SPEED_MPS = 1.35
+MAX_SAFETY_DETOUR = 0.30
+NEAREST_NODE_MAX_M = 250.0
+LAMBDA_MAX = 4.0
+W_LIGHTS = 0.40
+W_PLACES = 0.30
+W_SIDEWALKS = 0.20
+W_CROSSWALKS = 0.10
 
 # Same UW envelope the mock contract and the prototype use.
 UW_CENTER_LAT = 47.6553
