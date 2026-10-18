@@ -1,4 +1,4 @@
-import { useRef } from "react";
+import { useRef, type ReactNode } from "react";
 import { ActivityIndicator, Pressable, View } from "react-native";
 import MapView, { Marker } from "react-native-maps";
 
@@ -89,6 +89,8 @@ export function HomeScreen({
   onRetryLocation,
   onPickDestination,
   onFind,
+  originName,
+  belowLocations,
 }: {
   status: DataStatusResponse | null;
   statusError: string | null;
@@ -99,6 +101,10 @@ export function HomeScreen({
   onRetryLocation: () => void;
   onPickDestination: () => void;
   onFind: () => void;
+  /** A saved place chosen as the start, shown instead of "Your current location". */
+  originName?: string;
+  /** Rendered under the From/To card (saved-place chips). */
+  belowLocations?: ReactNode;
 }) {
   const theme = useTheme();
   const mapRef = useRef<MapView>(null);
@@ -125,8 +131,8 @@ export function HomeScreen({
             glyph="ring"
             label="Starting from"
             onPress={onRetryLocation}
-            placeholder={origin.status !== "ready"}
-            value={originLabel(origin)}
+            placeholder={!originName && origin.status !== "ready"}
+            value={originName ?? originLabel(origin)}
           />
           <View style={{ backgroundColor: theme.colors.border, height: 1 }} />
           <LocationField
@@ -137,6 +143,7 @@ export function HomeScreen({
             value={destination?.name ?? "Where are you headed?"}
           />
         </Card>
+        {belowLocations}
         <View style={{ alignItems: "flex-end", flexDirection: "row", justifyContent: "space-between" }}>
           <View style={{ gap: theme.space.xs }}>
             <AppText variant="overline">Around UW</AppText>

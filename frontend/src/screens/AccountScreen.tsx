@@ -1,3 +1,4 @@
+import type { ReactNode } from "react";
 import { View } from "react-native";
 
 import { useTheme } from "../theme";
@@ -15,7 +16,16 @@ function initials(name: string): string {
     .join("");
 }
 
-export function AccountScreen({ user, onLogOut }: { user: UserPublic; onLogOut: () => void }) {
+export function AccountScreen({
+  user,
+  onLogOut,
+  children,
+}: {
+  user: UserPublic;
+  onLogOut: () => void;
+  /** Feature links and settings, shown above "Log out". */
+  children?: ReactNode;
+}) {
   const theme = useTheme();
   const first = user.name.trim().split(/\s+/)[0] || user.name;
   return (
@@ -50,6 +60,7 @@ export function AccountScreen({ user, onLogOut }: { user: UserPublic; onLogOut: 
             </AppText>
           </View>
         </Card>
+        {children}
         <Button label="Log out" onPress={onLogOut} variant="destructive" />
       </View>
     </Screen>

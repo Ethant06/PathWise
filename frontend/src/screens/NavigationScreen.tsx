@@ -8,6 +8,14 @@ import { findRoutes, listWatchers, startWatch, updateWatch, type Watcher } from 
 import { AppText } from "../components/ui/AppText";
 import { Button } from "../components/ui/Button";
 import { UserDot } from "../components/ui/MapMarks";
+import { isEnabled } from "../config/features";
+import { avoidZones } from "../features/avoidZones/service";
+import { AvoidZoneCircles, ReportMarkers } from "../features/map/layers";
+import { reports as recentReports } from "../features/reports/service";
+import { useVoiceEnabled } from "../features/voice/settings";
+import { useWalkVoice } from "../features/voice/useWalkVoice";
+import { formatElapsed } from "../features/walks/format";
+import { useWalkSession, type WalkPlan } from "../features/walks/useWalkSession";
 import { formatMiles, toLatLngs } from "../format";
 import { ARRIVE_METERS, distanceMeters, distanceToPath, OFF_ROUTE_METERS, type LatLng } from "../geo";
 import { mapStroke, mutedMapStyle, useTheme, type Theme } from "../theme";
@@ -17,6 +25,8 @@ type Choice = "fastest" | "safety_focused";
 
 const REROUTE_WAIT_MS = 8_000;
 const FOLLOW_DELTA = 0.004;
+/** Time to show "You arrived" before the walk ends on its own. */
+const ARRIVED_HOLD_MS = 3_000;
 
 export function NavigationScreen({
   choice,
@@ -24,12 +34,15 @@ export function NavigationScreen({
   routes,
   walkerName,
   onStop,
+  walk,
 }: {
   choice: Choice;
   destination: PlaceHit;
   routes: RouteResponse;
   walkerName: string;
   onStop: (routes: RouteResponse) => void;
+  /** Walk session (4.2). When set, ending the walk records it instead of going back. */
+  walk?: WalkPlan;
 }) {
   const mapRef = useRef<MapView>(null);
   const routesRef = useRef(routes);
@@ -62,9 +75,93 @@ export function NavigationScreen({
   const milesAway = here ? formatMiles(distanceMeters(here, destinationCoord)) : "Locating";
   const detail = status === "Following your location" ? destination.name : status;
 
+  const initialRoute = choice === "fastest" ? routes.fastest : routes.safety_focused;
+  const walkSession = useWalkSession({ choice, initialRoute, path, here });
+  const endedRef = useRef(false);
+  const zones = avoidZones.use();
+  const reported = recentReports.use();
+  const voiceOn = useVoiceEnabled();
+  const shownZones = isEnabled("avoidZones") ? zones.items : [];
+  const shownReports = isEnabled("reports") ? reported.items : [];
+
+  useWalkVoice({
+    enabled: Boolean(walk) && isEnabled("voice") && voiceOn,
+    choice,
+    route: initialRoute,
+    destinationName: destination.name,
+    here,
+    remainingMeters: walkSession.remainingMeters,
+    arrived,
+    zones: shownZones,
+    reports: shownReports,
+  });
+
+  function endWalk(endedBy: "user" | "arrived") {
+    if (!walk) {
+      onStop(activeRoutes);
+      return;
+    }
+    if (endedRef.current) return;
+    endedRef.current = true;
+    walk.onEnded(walkSession.buildWalk(endedBy, walk.origin, walk.destination));
+  }
+
+  function noteStreet(next: LatLng) {
+    const previous = streetPoint.current;
+    const moved = previous ? distanceMeters(previous, next) : 1_000;
+    if (previous && moved < 30 && Date.now() - streetAt.current < 20_000) return;
+    streetAt.current = Date.now();
+    streetPoint.current = next;
+    Location.reverseGeocodeAsync(next)
+      .then((places) => {
+        const name = places[0]?.street || places[0]?.name;
+        if (name) setStreet(name);
+      })
+      .catch(() => {});
+  }
+
+  async function reportWatch(
+    id: string,
+    next: LatLng,
+    offRoute: boolean,
+    atDestination: boolean,
+    rerouted = false,
+  ) {
+    let street: string | null = null;
+    try {
+      const places = await Location.reverseGeocodeAsync(next);
+      street = places[0]?.street || places[0]?.name || null;
+    } catch {
+      street = null;
+    }
+    try {
+      const session = await updateWatch(id, {
+        off_route: offRoute,
+        arrived: atDestination,
+        rerouted,
+        street,
+        lat: next.latitude,
+        lng: next.longitude,
+      });
+      if (session.notice) setWatchError(session.notice);
+    } catch {
+      // A missed ping can be sent again on the next location update.
+    }
+  }
+
   useEffect(() => {
     routesRef.current = activeRoutes;
   }, [activeRoutes]);
+
+  // The walk ends on its own at the existing arrival check (ARRIVE_METERS), after the
+  // watcher's "arrived" ping has gone out.
+  useEffect(() => {
+    if (!walk || !arrived) return;
+    const timer = setTimeout(() => endWalk("arrived"), ARRIVED_HOLD_MS);
+    return () => clearTimeout(timer);
+    // endWalk reads refs and the latest props; re-arming on each render would reset the timer.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [walk, arrived]);
 
   useEffect(() => {
     let cancelled = false;
@@ -194,49 +291,6 @@ export function NavigationScreen({
     return () => clearInterval(timer);
   }, [watchId, choice, destination.lat, destination.lng]);
 
-  function noteStreet(next: LatLng) {
-    const previous = streetPoint.current;
-    const moved = previous ? distanceMeters(previous, next) : 1_000;
-    if (previous && moved < 30 && Date.now() - streetAt.current < 20_000) return;
-    streetAt.current = Date.now();
-    streetPoint.current = next;
-    Location.reverseGeocodeAsync(next)
-      .then((places) => {
-        const name = places[0]?.street || places[0]?.name;
-        if (name) setStreet(name);
-      })
-      .catch(() => {});
-  }
-
-  async function reportWatch(
-    id: string,
-    next: LatLng,
-    offRoute: boolean,
-    atDestination: boolean,
-    rerouted = false,
-  ) {
-    let street: string | null = null;
-    try {
-      const places = await Location.reverseGeocodeAsync(next);
-      street = places[0]?.street || places[0]?.name || null;
-    } catch {
-      street = null;
-    }
-    try {
-      const session = await updateWatch(id, {
-        off_route: offRoute,
-        arrived: atDestination,
-        rerouted,
-        street,
-        lat: next.latitude,
-        lng: next.longitude,
-      });
-      if (session.notice) setWatchError(session.notice);
-    } catch {
-      // A missed ping can be sent again on the next location update.
-    }
-  }
-
   async function refreshWatchers() {
     try {
       const result = await listWatchers(true);
@@ -302,6 +356,8 @@ export function NavigationScreen({
           </Marker>
         ) : null}
         <Marker coordinate={destinationCoord} pinColor={theme.colors.routeSafer} title={destination.name} />
+        <AvoidZoneCircles zones={shownZones} />
+        <ReportMarkers reports={shownReports} />
       </MapView>
 
       <View pointerEvents="none" style={[styles.statusCard, { top: insets.top + theme.space.lg }]}>
@@ -310,6 +366,14 @@ export function NavigationScreen({
         <AppText variant="subhead">
           {arrived ? "You arrived" : milesAway === "Locating" ? "Finding you" : `miles to ${detail}`}
         </AppText>
+        {walk ? (
+          <AppText accessibilityLiveRegion="polite" variant="caption">
+            {formatElapsed(walkSession.elapsedMs)} walking
+            {walkSession.remainingMeters !== null && !arrived
+              ? ` · ${formatMiles(walkSession.remainingMeters)} left along the route`
+              : ""}
+          </AppText>
+        ) : null}
       </View>
 
       <View style={[styles.stop, { paddingBottom: insets.bottom + theme.space.lg }]}>
@@ -350,7 +414,7 @@ export function NavigationScreen({
             {watchError}
           </AppText>
         ) : null}
-        <Button haptic="medium" label="End walk" onPress={() => onStop(activeRoutes)} />
+        <Button haptic="medium" label="End walk" onPress={() => endWalk("user")} />
       </View>
     </View>
   );

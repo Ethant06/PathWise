@@ -5,10 +5,13 @@ import { useTheme } from "../theme";
 import { Glyph, type GlyphName } from "./Glyph";
 import { AppText } from "./ui/AppText";
 
-export type Tab = "home" | "profile";
+import { isEnabled } from "../config/features";
+
+export type Tab = "home" | "walks" | "profile";
 
 const ITEMS: { tab: Tab; label: string; glyph: GlyphName }[] = [
   { tab: "home", label: "Home", glyph: "home" },
+  ...(isEnabled("routeHistory") ? [{ tab: "walks" as const, label: "Walks", glyph: "clock" as const }] : []),
   { tab: "profile", label: "Profile", glyph: "person" },
 ];
 

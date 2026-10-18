@@ -41,6 +41,13 @@ type Colors = {
   routeFastest: string;
   routeSafer: string;
   locationHalo: string;
+  // Lighting layer. "Unlit" means no streetlight is recorded, not dangerous, so it stays neutral.
+  lightingLit: string;
+  lightingUnlit: string;
+  lightingUnknown: string;
+  avoidZoneFill: string;
+  avoidZoneStroke: string;
+  report: string;
 };
 
 const light: Colors = {
@@ -67,6 +74,12 @@ const light: Colors = {
   routeFastest: "#6d28d9",
   routeSafer: "#5b21b6",
   locationHalo: "rgba(75, 46, 131, 0.2)",
+  lightingLit: "#D9A400",
+  lightingUnlit: "#5E5869",
+  lightingUnknown: "#A39DAE",
+  avoidZoneFill: "rgba(178, 107, 0, 0.14)",
+  avoidZoneStroke: "#B26B00",
+  report: "#B26B00",
 };
 
 const dark: Colors = {
@@ -93,6 +106,12 @@ const dark: Colors = {
   routeFastest: "#6d28d9",
   routeSafer: "#5b21b6",
   locationHalo: "rgba(197, 180, 227, 0.25)",
+  lightingLit: uw.spiritGold,
+  lightingUnlit: "#B9B0C9",
+  lightingUnknown: "#6E6480",
+  avoidZoneFill: "rgba(242, 181, 74, 0.18)",
+  avoidZoneStroke: "#F2B54A",
+  report: "#F2B54A",
 };
 
 // ---------- Spacing (4-point grid) ----------
