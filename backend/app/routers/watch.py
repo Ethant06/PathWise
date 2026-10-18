@@ -76,6 +76,7 @@ def ping_watch(watch_id: str, body: WatchUpdateRequest) -> WatchResponse:
         street=body.street,
         lat=body.lat,
         lng=body.lng,
+        rerouted=body.rerouted,
     )
     _deliver(session, created)
     return _response(session)

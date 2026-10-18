@@ -63,6 +63,7 @@ def update_watch(
     off_route: bool,
     arrived: bool,
     street: str | None,
+    rerouted: bool = False,
     lat: float | None = None,
     lng: float | None = None,
     now: datetime | None = None,
@@ -76,6 +77,14 @@ def update_watch(
         return []
 
     _note_motion(session, lat, lng, moment)
+    if rerouted and not session.alerted_off:
+        session.alerted_off = True
+        place = _place(street)
+        text = (
+            f"{session.walker_name} left the path{place}. "
+            f"The walk to {session.destination_name} changed."
+        )
+        return [_send(session, "rerouted", text, moment)]
     if not off_route:
         session.off_since = None
         session.alerted_off = False

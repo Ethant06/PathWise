@@ -5,7 +5,7 @@ import MapView, { Marker, Polyline } from "react-native-maps";
 
 import { findRoutes, listWatchers, startWatch, updateWatch, type Watcher } from "../api";
 import { PrimaryButton } from "../components/PrimaryButton";
-import { toLatLngs } from "../format";
+import { formatMiles, toLatLngs } from "../format";
 import { ARRIVE_METERS, distanceMeters, distanceToPath, OFF_ROUTE_METERS, type LatLng } from "../geo";
 import { colors } from "../theme";
 import type { PlaceHit, RouteResponse } from "../types";
@@ -35,6 +35,7 @@ export function NavigationScreen({
   const [activeRoutes, setActiveRoutes] = useState(routes);
   const [here, setHere] = useState<LatLng | null>(null);
   const [status, setStatus] = useState("Following your location");
+  const [street, setStreet] = useState("Finding street");
   const [arrived, setArrived] = useState(false);
   const [watcherName, setWatcherName] = useState("");
   const [picking, setPicking] = useState(false);
@@ -45,10 +46,14 @@ export function NavigationScreen({
   const watchIdRef = useRef<string | null>(null);
   const arrivedRef = useRef(false);
   const hereRef = useRef<LatLng | null>(null);
+  const streetAt = useRef(0);
+  const streetPoint = useRef<LatLng | null>(null);
 
   const selected = choice === "fastest" ? activeRoutes.fastest : activeRoutes.safety_focused;
   const path = toLatLngs(selected.geometry);
   const destinationCoord = { latitude: destination.lat, longitude: destination.lng };
+  const milesAway = here ? formatMiles(distanceMeters(here, destinationCoord)) : "Locating";
+  const detail = status === "Following your location" ? destination.name : status;
   const lineColor = choice === "fastest" ? colors.blue : colors.teal;
 
   useEffect(() => {
@@ -79,6 +84,7 @@ export function NavigationScreen({
           };
           setHere(next);
           hereRef.current = next;
+          noteStreet(next);
           const current = routesRef.current;
           const line = toLatLngs(
             choice === "fastest" ? current.fastest.geometry : current.safety_focused.geometry,
@@ -120,6 +126,10 @@ export function NavigationScreen({
               if (cancelled) return;
               setActiveRoutes(fresh);
               setStatus("Following your location");
+              const id = watchIdRef.current;
+              if (id && !arrivedRef.current) {
+                void reportWatch(id, next, false, false, true);
+              }
             })
             .catch((error: unknown) => {
               if (cancelled) return;
@@ -162,7 +172,27 @@ export function NavigationScreen({
     return () => clearInterval(timer);
   }, [watchId, choice, destination.lat, destination.lng]);
 
-  async function reportWatch(id: string, next: LatLng, offRoute: boolean, atDestination: boolean) {
+  function noteStreet(next: LatLng) {
+    const previous = streetPoint.current;
+    const moved = previous ? distanceMeters(previous, next) : 1_000;
+    if (previous && moved < 30 && Date.now() - streetAt.current < 20_000) return;
+    streetAt.current = Date.now();
+    streetPoint.current = next;
+    Location.reverseGeocodeAsync(next)
+      .then((places) => {
+        const name = places[0]?.street || places[0]?.name;
+        if (name) setStreet(name);
+      })
+      .catch(() => {});
+  }
+
+  async function reportWatch(
+    id: string,
+    next: LatLng,
+    offRoute: boolean,
+    atDestination: boolean,
+    rerouted = false,
+  ) {
     let street: string | null = null;
     try {
       const places = await Location.reverseGeocodeAsync(next);
@@ -174,6 +204,7 @@ export function NavigationScreen({
       const session = await updateWatch(id, {
         off_route: offRoute,
         arrived: atDestination,
+        rerouted,
         street,
         lat: next.latitude,
         lng: next.longitude,
@@ -234,9 +265,9 @@ export function NavigationScreen({
       </MapView>
 
       <View pointerEvents="none" style={styles.statusCard}>
-        <Text style={styles.eyebrow}>{arrived ? "Arrived" : "Navigating"}</Text>
-        <Text style={styles.title}>{destination.name}</Text>
-        <Text style={styles.status}>{status}</Text>
+        <Text style={styles.street}>{street}</Text>
+        <Text style={styles.miles}>{arrived ? "0.0 mi" : milesAway}</Text>
+        <Text style={styles.status}>{detail}</Text>
       </View>
 
       <View style={styles.stop}>
@@ -310,16 +341,10 @@ const styles = StyleSheet.create({
     paddingVertical: 12,
     position: "absolute",
     right: 16,
-    top: (Platform.OS === "android" ? StatusBar.currentHeight ?? 0 : 0) + 16,
+    top: (Platform.OS === "android" ? StatusBar.currentHeight ?? 0 : 54) + 36,
   },
-  eyebrow: {
-    color: colors.teal,
-    fontSize: 10,
-    fontWeight: "700",
-    letterSpacing: 0.8,
-    textTransform: "uppercase",
-  },
-  title: { color: colors.ink, fontSize: 18, fontWeight: "700", marginTop: 2 },
+  street: { color: colors.ink, fontSize: 18, fontWeight: "700" },
+  miles: { color: colors.teal, fontSize: 28, fontWeight: "700", marginTop: 2 },
   status: { color: colors.muted, fontSize: 12, marginTop: 4 },
   stop: {
     backgroundColor: colors.surface,

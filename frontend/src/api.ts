@@ -136,7 +136,14 @@ export function startWatch(body: {
 
 export function updateWatch(
   id: string,
-  body: { off_route: boolean; arrived?: boolean; street?: string | null; lat?: number; lng?: number },
+  body: {
+    off_route: boolean;
+    arrived?: boolean;
+    rerouted?: boolean;
+    street?: string | null;
+    lat?: number;
+    lng?: number;
+  },
 ): Promise<WatchSession> {
   return request(`/api/watch/${id}`, { method: "POST", body: JSON.stringify(body) });
 }

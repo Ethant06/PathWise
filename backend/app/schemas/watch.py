@@ -12,6 +12,7 @@ class WatchStartRequest(BaseModel):
 class WatchUpdateRequest(BaseModel):
     off_route: bool
     arrived: bool = False
+    rerouted: bool = False
     street: str | None = Field(default=None, max_length=80)
     lat: float | None = None
     lng: float | None = None
